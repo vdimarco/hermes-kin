@@ -1,0 +1,311 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:#0a0c15}
+  body{font-family:Inter,sans-serif;color:#f3efe6}
+  .layer{position:absolute;inset:0;will-change:opacity,transform}
+  #bg{background:linear-gradient(180deg,#0f1222 0%,#0a0c15 100%)}
+  .glow{position:absolute;border-radius:50%}
+  #dots{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 1.2px,transparent 1.6px);background-size:30px 30px;
+    -webkit-mask-image:radial-gradient(900px 600px at 50% 50%,#000 25%,transparent 80%)}
+  .tag{display:inline-flex;align-items:center;gap:12px;font-size:20px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#a9adbf;
+    padding:11px 20px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.03)}
+  .tag i{width:10px;height:10px;border-radius:50%;background:#5fe3d0;box-shadow:0 0 14px #5fe3d0}
+  .word{font-family:Fraunces,serif;font-weight:700;letter-spacing:-.035em;line-height:.9;
+    background:linear-gradient(180deg,#fff7ea 30%,#ffc98f 100%);-webkit-background-clip:text;color:transparent}
+  .lede{font-family:Fraunces,serif;font-style:italic;font-weight:500;color:#f6efe3}
+  .muted{color:#a9adbf}
+  .mono{font-family:"JetBrains Mono",monospace}
+  /* title */
+  #s1 .wrap{position:absolute;left:0;right:0;top:300px;text-align:center}
+  #s1 .word{font-size:250px;display:inline-block}
+  #s1 .word{background:none;color:inherit}
+  #s1 .word span{display:inline-block;background:linear-gradient(180deg,#fff7ea 30%,#ffc98f 100%);-webkit-background-clip:text;color:transparent;padding:0 .01em}
+  #s1 .lede{font-size:52px;margin-top:26px}
+  #s1 .ver{margin-top:30px;font-size:22px}
+  /* cast */
+  #s2 h2{position:absolute;left:0;right:0;top:86px;text-align:center;font-family:Fraunces,serif;font-weight:700;font-size:78px;letter-spacing:-.03em}
+  #s2 h2 em{font-style:italic;font-weight:500;color:#ffc98f}
+  .row{position:absolute;left:0;right:0;display:flex;justify-content:center;gap:22px}
+  .rowlabel{position:absolute;left:0;right:0;text-align:center;font-size:19px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#a9adbf}
+  .card{width:212px;height:300px;border-radius:22px;position:relative;overflow:hidden;
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.1)}
+  .card::before{content:"";position:absolute;inset:0;background:radial-gradient(160px 170px at 50% 42%,var(--a),transparent 72%);opacity:.38}
+  .card img{position:absolute;left:50%;transform:translateX(-50%);-webkit-mask-image:linear-gradient(180deg,#000 78%,transparent 98%)}
+  .card .bust{top:14px;height:236px}
+  .card .toon{bottom:46px;height:220px}
+  .card .nm{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-family:Fraunces,serif;font-weight:600;font-size:28px}
+  /* overlay scene */
+  #frameWrap{position:absolute;left:1180px;top:18px;width:330px;height:535px;transform-origin:0 0}
+  #ov{width:330px;height:535px;border:0;background:transparent;display:block}
+  .callout{position:absolute;left:150px;top:300px;width:900px}
+  .callout .k{font-size:22px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#ffb86b}
+  .callout h3{font-family:Fraunces,serif;font-weight:700;font-size:84px;line-height:1.02;letter-spacing:-.03em;margin-top:16px}
+  .callout p{font-size:32px;line-height:1.45;color:#c4c7d4;margin-top:24px;width:780px}
+  #ring{position:absolute;border:3px solid #ffb86b;border-radius:26px;box-shadow:0 0 0 8px rgba(255,184,107,.15),0 0 60px rgba(255,184,107,.35)}
+  #cursor{position:absolute;left:0;top:0;width:34px;height:34px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+  #composer{position:absolute;left:150px;top:720px;width:780px;padding:22px 24px;border-radius:20px;background:#14182a;border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  #composer .hd{display:flex;justify-content:space-between;align-items:center;font-size:18px;color:#a9adbf}
+  #composer .chip{font-size:15px;font-weight:600;color:#0b0d17;background:#5fe3d0;padding:5px 12px;border-radius:999px}
+  #composer .box{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border-radius:14px;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);font-size:27px}
+  #composer .caret{display:inline-block;width:3px;height:30px;background:#ffb86b;vertical-align:-5px;margin-left:2px}
+  #composer .send{font-size:18px;font-weight:600;padding:9px 16px;border-radius:10px;border:1.5px solid rgba(255,255,255,.3);color:#e9e4d8;white-space:nowrap}
+  /* end card */
+  #s5 .faces{position:absolute;left:0;right:0;top:170px;display:flex;justify-content:center;gap:14px}
+  .face{width:118px;height:118px;border-radius:50%;overflow:hidden;position:relative;border:3px solid rgba(255,255,255,.14);
+    background:radial-gradient(circle at 50% 40%,var(--a),#151a2c 75%)}
+  .face img{position:absolute;left:50%;transform:translateX(-50%)}
+  .face .bust{top:2px;height:205px}
+  .face .toon{top:4px;height:190px}
+  #s5 .word{position:absolute;left:0;right:0;top:350px;text-align:center;font-size:200px}
+  #s5 .lede{position:absolute;left:0;right:0;top:600px;text-align:center;font-size:44px}
+  #s5 .cmd{position:absolute;left:50%;top:720px;transform:translateX(-50%);font-size:34px;padding:20px 32px;border-radius:16px;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);white-space:nowrap}
+  #s5 .cmd b{color:#ffb86b;font-weight:500}
+  #s5 .foot{position:absolute;left:0;right:0;top:870px;text-align:center;font-size:26px}
+
+  /* ---- vertical 1080x1920 layout (comp.html?v=1) ---- */
+  body.v,html.v{width:1080px;height:1920px}
+  .v #s1 .wrap{top:640px}
+  .v #s1 .word{font-size:230px}
+  .v #s2 h2{top:150px;font-size:84px}
+  .v .card{width:220px;height:290px}
+  .v .card .bust{top:12px;height:226px}
+  .v .card .toon{bottom:44px;height:210px}
+  .v #r1{left:180px;right:180px;flex-wrap:wrap;row-gap:20px}
+  .v #r2{left:60px;right:60px;flex-wrap:wrap;row-gap:20px}
+  .v #r1{top:330px !important}
+  .v #r2{top:1015px !important}
+  .v #s2 > div:nth-of-type(1){top:290px !important}
+  .v #s2 > div:nth-of-type(3){top:975px !important}
+  .v .callout{left:90px;top:1330px;width:900px}
+  .v .callout h3{font-size:76px}
+  .v .callout p{font-size:34px;width:900px}
+  .v #composer{left:90px;top:1650px;width:900px}
+  .v #s5 .faces{top:420px;left:70px;right:70px;flex-wrap:wrap;row-gap:16px}
+  .v #s5 .word{top:780px;font-size:220px}
+  .v #s5 .lede{top:1040px}
+  .v #s5 .cmd{top:1160px;font-size:28px}
+  .v #s5 .foot{top:1300px;font-size:24px}
+</style></head>
+<body>
+<div id="bg" class="layer"><div class="glow" id="g1"></div><div class="glow" id="g2"></div><div class="glow" id="g3"></div><div id="dots"></div></div>
+
+<div id="s1" class="layer"><div class="wrap">
+  <span class="tag"><i></i>Hermes Desktop plugin</span><br><br>
+  <div class="word" id="tword"></div>
+  <div class="lede">Give Hermes a face.</div>
+  <div class="ver muted mono">kin · v0.4.0</div>
+</div></div>
+
+<div id="s2" class="layer">
+  <h2>Pick your <em>avatar.</em></h2>
+  <div class="rowlabel" style="top:214px">Six 3D busts</div>
+  <div class="row" id="r1" style="top:252px"></div>
+  <div class="rowlabel" style="top:592px">Seven 2D cartoons</div>
+  <div class="row" id="r2" style="top:630px"></div>
+</div>
+
+<div id="s3" class="layer">
+  <div id="frameWrap"><iframe id="ov" src="/overlay/index.html" allowtransparency="true"></iframe></div>
+  <div id="ring"></div>
+  <div id="callouts"></div>
+  <div id="composer">
+    <div class="hd"><span>Hermes · composer</span><span class="chip">From voice</span></div>
+    <div class="box"><span id="ctext"></span><span class="send">Send ↵</span></div>
+  </div>
+  <svg id="cursor" viewBox="0 0 24 24"><path d="M3 2l7.5 19 2.6-7.9L21 10.5z" fill="#fff" stroke="#0b0d17" stroke-width="1.6" stroke-linejoin="round"/></svg>
+</div>
+
+<div id="s5" class="layer">
+  <div class="faces" id="faces"></div>
+  <div class="word">Avatar</div>
+  <div class="lede">13 characters for Hermes Desktop.</div>
+  <div class="cmd mono"><b>$</b> hermes plugins install vdimarco/hermes-kin</div>
+  <div class="foot muted">Submitted to the Hermes plugin catalog · MIT · @NousResearch</div>
+</div>
+
+<script>
+const V = new URLSearchParams(location.search).get("v") === "1";
+if (V) { document.documentElement.classList.add("v"); document.body.classList.add("v"); }
+const BUSTS = [["kin","Kin","#ffb86b"],["elena","Elena","#76d69a"],["vance","Vance","#5fd4ff"],["kael","Kael","#ffd05a"],["sera","Sera","#bf94ff"],["freya","Freya","#a9cbff"]];
+const TOONS = [["zip","Zip","#5fe3d0"],["juno","Juno","#ffc94a"],["sprout","Sprout","#8fe08a"],["ollie","Ollie","#ff8a5c"],["barley","Barley","#e0645a"],["mochi","Mochi","#f4a8d0"],["moss","Moss","#7fcfb8"]];
+const A = "/docs/promo-src/";
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => 1 - Math.pow(1 - clamp(k), 3);
+const easeIO = (k) => { k = clamp(k); return k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; };
+const back = (k) => { k = clamp(k); const c = 1.70158; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const win = (t, a, b, fi = .5, fo = .5) => clamp((t - a) / fi) * (1 - clamp((t - (b - fo)) / fo));
+
+// Build DOM
+$("tword").innerHTML = [..."Avatar"].map((c) => `<span>${c}</span>`).join("");
+const mk = (arr, kind) => arr.map(([id, nm, a]) => `<div class="card" style="--a:${a}"><img class="${kind}" src="${A}${kind === "bust" ? "busts" : "toons"}/${id}.png"><div class="nm">${nm}</div></div>`).join("");
+$("r1").innerHTML = mk(BUSTS, "bust");
+$("r2").innerHTML = mk(TOONS, "toon");
+$("faces").innerHTML = [...BUSTS.map((b) => [...b, "bust"]), ...TOONS.map((b) => [...b, "toon"])]
+  .map(([id, nm, a, kind]) => `<div class="face" style="--a:${a}"><img class="${kind}" src="${A}${kind === "bust" ? "busts" : "toons"}/${id}.png"></div>`).join("");
+const CALLOUTS = [
+  [13.0, 20.2, "Overlay", "Hermes, on your desktop.", "A character floats over your apps and follows your cursor. Its status line shows what Hermes is doing."],
+  [20.2, 27.4, "Task drawer", "Every task, in plain words.", "Running and queued work sits next to what just finished. Click a task to jump to it."],
+  [27.4, 34.4, "Moods", "It reacts to your work.", "Tests fail and it frowns. The build goes green and it grins."],
+  [34.4, 42.2, "13 characters", "Pick your character.", "3D or cartoon. Each one has its own voice."],
+  [42.2, 48.6, "Voice", "Talk to Hermes.", "Tap the mic and ask. Your words show up in Hermes."],
+  [48.6, 53.6, "Local", "Runs on your machine.", "No telemetry and no account. /kin wipe clears its memory."],
+];
+$("callouts").innerHTML = CALLOUTS.map(([, , k, h, p], i) => `<div class="callout" id="c${i}"><div class="k">${k}</div><h3>${h}</h3><p>${p}</p></div>`).join("");
+
+// Overlay bridge (set up by mock.js inside the frame)
+const ov = () => $("ov").contentWindow;
+const kin = (k, v) => ov()?.__kin?.emit(k, v);
+const odoc = () => $("ov").contentDocument;
+const SC = V ? 2.3 : 1.95, FX = V ? 160 : 1180, FY = V ? 60 : 18;
+if (V) Object.assign(document.getElementById("frameWrap").style, { left: FX + "px", top: FY + "px" });
+const BASE = {
+  mood: "watching", line: "Watching terminal", streaming: false, voiceActive: false, avatarId: undefined,
+  desktop: { class: "Alacritty", title: "~/hermes-kin — npm run build" },
+};
+const T = {
+  build: { label: "Build release 0.4.0", sub: "npm run build · step 2 of 3", status: "running", ageSec: 95 },
+  tests: { label: "Run test suite", sub: "pytest -q · starts after the build", status: "queued", ageSec: 40 },
+  picker: { label: "Fix the persona picker layout", sub: "4 files changed", status: "done", ageSec: 1500 },
+  notes: { label: "Draft release notes", sub: "Waiting on you", status: "ready", ageSec: 3200 },
+};
+let S = { ...BASE, activeTasks: [T.build, T.tests], recentTasks: [T.picker, T.notes], feedTasks: [] };
+const setS = (patch) => { S = { ...S, ...patch }; kin("state", S); };
+const openPicker = () => odoc()?.getElementById("persona-btn")?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+const pick = (id) => odoc()?.querySelector(`#char-picker .chip[data-id="${id}"]`)?.click();
+const CUES = [
+  [12.7, () => setS({})],
+  [21.6, () => setS({ line: "Running pytest…", activeTasks: [{ ...T.tests, status: "running", sub: "pytest -q · 212 tests", ageSec: 5 }],
+    recentTasks: [{ ...T.build, status: "done", sub: "Built in 2m 41s", ageSec: 10 }, T.picker, T.notes] })],
+  [24.4, () => setS({ activeTasks: [{ ...T.tests, status: "running", sub: "pytest -q · 212 tests", ageSec: 8 },
+    { label: "Lint overlay", sub: "eslint overlay/ · queued", status: "queued", ageSec: 2 }] })],
+  [28.0, () => setS({ mood: "concerned", line: "pytest failed: test_auth.py",
+    activeTasks: [{ ...T.tests, status: "failed", sub: "2 of 212 tests failed", ageSec: 30 }] })],
+  [31.6, () => setS({ mood: "pleased", line: "All 212 tests passed",
+    activeTasks: [], recentTasks: [{ ...T.tests, status: "done", sub: "212 passed after the fix", ageSec: 3 }, { ...T.build, status: "done", sub: "Built in 2m 41s", ageSec: 300 }, T.picker] })],
+  [34.6, openPicker], [35.5, () => pick("zip")],
+  [37.1, openPicker], [38.0, () => pick("moss")],
+  [39.6, openPicker], [40.5, () => pick("elena")],
+  [42.8, () => setS({ mood: "attentive", line: "Listening…", voiceActive: true })],
+  [46.6, () => { kin("mic", { active: false, level: 0, bars: [0, 0, 0, 0], speaking: false }); setS({ mood: "idle", line: "In your composer", voiceActive: false }); }],
+  [49.0, () => setS({ mood: "idle", line: "All clear", activeTasks: [] })],
+];
+let cueIdx = 0, lastStateAt = 0;
+
+// Cursor path for the gaze scene (composition coords)
+const CPATH = V
+  ? [[13.2, 120, 1000], [14.6, 960, 120], [16.0, 1010, 820], [17.3, 90, 260], [18.6, 700, 1240], [20.0, 900, 560]]
+  : [[13.2, 980, 820], [14.6, 1700, 180], [16.0, 1860, 760], [17.3, 1050, 160], [18.6, 1500, 980], [20.0, 1640, 560]];
+function cursorAt(t) {
+  if (t <= CPATH[0][0]) return CPATH[0].slice(1);
+  for (let i = 0; i < CPATH.length - 1; i++) {
+    const [ta, xa, ya] = CPATH[i], [tb, xb, yb] = CPATH[i + 1];
+    if (t <= tb) { const k = easeIO((t - ta) / (tb - ta)); return [lerp(xa, xb, k), lerp(ya, yb, k)]; }
+  }
+  return CPATH[CPATH.length - 1].slice(1);
+}
+const HEAD = [FX + 165 * SC, FY + 115 * SC];
+
+window.render = function (t) {
+  // background drift
+  $("g1").style.cssText = `left:${700 + 180 * Math.sin(t / 7)}px;top:${200 + 90 * Math.cos(t / 9)}px;width:900px;height:700px;background:radial-gradient(closest-side,rgba(255,184,107,.20),transparent)`;
+  $("g2").style.cssText = `left:${1200 + 160 * Math.cos(t / 8)}px;top:${-80 + 80 * Math.sin(t / 6)}px;width:800px;height:640px;background:radial-gradient(closest-side,rgba(95,227,208,.14),transparent)`;
+  $("g3").style.cssText = `left:${120 + 140 * Math.sin(t / 10)}px;top:${520 + 70 * Math.cos(t / 7)}px;width:900px;height:640px;background:radial-gradient(closest-side,rgba(170,120,255,.16),transparent)`;
+
+  // S1 title 0–5.6
+  const s1 = win(t, 0, 5.6, .4, .6);
+  $("s1").style.opacity = s1;
+  $("s1").style.transform = `scale(${1 + 0.04 * clamp((t - 5.0) / .6)})`;
+  [...$("tword").children].forEach((sp, i) => {
+    const k = back((t - 0.5 - i * 0.07) / 0.7);
+    sp.style.transform = `translateY(${(1 - k) * 120}px)`; sp.style.opacity = clamp((t - 0.5 - i * 0.07) / 0.35);
+  });
+  const s1kids = $("s1").querySelectorAll(".tag,.lede,.ver");
+  s1kids[0].style.opacity = clamp((t - 0.2) / .5);
+  s1kids[1].style.opacity = clamp((t - 1.5) / .6); s1kids[1].style.transform = `translateY(${(1 - ease((t - 1.5) / .8)) * 30}px)`;
+  s1kids[2].style.opacity = clamp((t - 2.3) / .6) * .9;
+
+  // S2 cast 5.6–12.6
+  const s2 = win(t, 5.6, 12.6, .4, .5);
+  $("s2").style.opacity = s2;
+  $("s2").querySelector("h2").style.transform = `translateY(${(1 - ease((t - 5.6) / .7)) * 40}px)`;
+  const cards = [...$("r1").children, ...$("r2").children];
+  cards.forEach((c, i) => {
+    const st = 6.0 + i * 0.13 + (i >= 6 ? 0.35 : 0);
+    const k = back((t - st) / 0.55);
+    c.style.opacity = clamp((t - st) / 0.3);
+    c.style.transform = `translateY(${(1 - k) * 60}px) scale(${0.85 + 0.15 * k})`;
+  });
+  $("s2").querySelectorAll(".rowlabel").forEach((el, i) => el.style.opacity = clamp((t - (5.9 + i * 1.1)) / .5));
+
+  // S3 overlay 12.4–53.6
+  const s3 = win(t, 12.4, 53.6, .6, .7);
+  $("s3").style.opacity = s3;
+  const enter = ease((t - 12.4) / 0.9);
+  $("frameWrap").style.transform = `translateX(${(1 - enter) * 300}px) scale(${SC})`;
+  CALLOUTS.forEach(([a, b], i) => {
+    const el = $("c" + i), v = win(t, a, b, .5, .45);
+    el.style.opacity = v;
+    el.style.transform = `translateY(${(1 - ease((t - a) / .6)) * 40 - clamp((t - (b - .45)) / .45) * 20}px)`;
+  });
+  // cues into the overlay frame
+  while (cueIdx < CUES.length && t >= CUES[cueIdx][0]) { try { CUES[cueIdx][1](); } catch (e) {} cueIdx++; }
+  if (t >= 12.7 && t < 53.6 && t - lastStateAt >= 0.5 && !(t >= 42.8 && t < 46.6)) { kin("state", S); lastStateAt = t; }
+  // mic levels while listening
+  if (t >= 42.8 && t < 46.6) {
+    const ph = t * 9, talk = (t > 43.3 && t < 45.9) ? 1 : 0.15;
+    const bars = [0, 1, 2, 3].map((j) => clamp((0.35 + 0.65 * Math.abs(Math.sin(ph + j * 1.3) * Math.cos(ph * 0.37 + j))) * talk));
+    kin("mic", { active: true, level: bars[1], bars, speaking: talk > 0.5 });
+    if (t - lastStateAt >= 0.5) { kin("state", S); lastStateAt = t; }
+  }
+  // cursor + gaze
+  const cv = win(t, 13.0, 20.4, .3, .4);
+  const [cx, cy] = cursorAt(t);
+  $("cursor").style.opacity = cv;
+  $("cursor").style.transform = `translate(${cx}px,${cy}px)`;
+  if (t >= 12.7 && t < 53.6) {
+    const [gx, gy] = cv > 0 ? [cx, cy] : [HEAD[0] - 600 + 120 * Math.sin(t / 2.2), HEAD[1] + 120 + 60 * Math.sin(t / 3.1)];
+    kin("gaze", { dx: clamp((gx - HEAD[0]) / 900, -1, 1), dy: clamp((gy - HEAD[1]) / 500, -1, 1) });
+  }
+  // drawer highlight ring
+  const rv = win(t, 20.8, 27.0, .4, .4);
+  const dr = odoc()?.getElementById("drawer")?.getBoundingClientRect();
+  if (dr) {
+    const pad = 10;
+    Object.assign($("ring").style, { left: `${FX + dr.left * SC - pad}px`, top: `${FY + dr.top * SC - pad}px`,
+      width: `${dr.width * SC + 2 * pad}px`, height: `${dr.height * SC + 2 * pad}px`, opacity: rv,
+      transform: `scale(${1 + 0.03 * (1 - ease((t - 20.8) / .5))})` });
+  }
+  // composer draft
+  const cpv = win(t, 43.4, 48.4, .45, .45);
+  $("composer").style.opacity = cpv;
+  $("composer").style.transform = `translateY(${(1 - ease((t - 43.4) / .6)) * 40}px)`;
+  const msg = "What's the status of my build?";
+  const n = Math.round(clamp((t - 44.0) / 1.8) * msg.length);
+  $("ctext").innerHTML = msg.slice(0, n) + (t < 48 ? `<span class="caret" style="opacity:${(Math.floor(t * 2.5) % 2) ? 1 : 0.15}"></span>` : "");
+
+  // S5 end 53.4–60
+  const s5 = clamp((t - 53.4) / .6);
+  $("s5").style.opacity = s5;
+  [...$("faces").children].forEach((f, i) => {
+    const k = back((t - 53.6 - i * 0.07) / 0.5);
+    f.style.opacity = clamp((t - 53.6 - i * 0.07) / 0.25);
+    f.style.transform = `translateY(${(1 - k) * 50}px) scale(${0.8 + 0.2 * k})`;
+  });
+  $("s5").querySelector(".word").style.transform = `translateY(${(1 - ease((t - 54.2) / .8)) * 50}px)`;
+  $("s5").querySelector(".word").style.opacity = clamp((t - 54.2) / .5);
+  $("s5").querySelector(".lede").style.opacity = clamp((t - 54.9) / .6);
+  $("s5").querySelector(".cmd").style.opacity = clamp((t - 55.5) / .6);
+  $("s5").querySelector(".cmd").style.transform = `translateX(-50%) translateY(${(1 - ease((t - 55.5) / .6)) * 24}px)`;
+  $("s5").querySelector(".foot").style.opacity = clamp((t - 56.2) / .6);
+};
+window.render(0);
+</script>
+</body></html>
