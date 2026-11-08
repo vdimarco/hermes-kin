@@ -1,0 +1,97 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1440px;height:1030px;overflow:hidden;background:#0b0d17}
+  .stage{position:relative;width:1440px;height:1030px;padding:48px 56px;font-family:Inter,sans-serif;color:#f3efe6;
+    background:
+      radial-gradient(700px 300px at 50% -40px, rgba(255,184,107,.16), transparent 70%),
+      linear-gradient(180deg,#0f1222 0%,#0a0c15 100%)}
+  header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:30px}
+  h2{font-family:Fraunces,serif;font-weight:700;font-size:56px;letter-spacing:-.03em;line-height:1}
+  h2 em{font-style:italic;font-weight:500;color:#ffc98f}
+  header p{font-size:16px;line-height:1.5;color:#a9adbf;width:400px;text-align:right}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+  .card{--a:#ffb86b;position:relative;height:392px;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.09)}
+  .face{position:relative;height:224px;overflow:hidden;
+    background:radial-gradient(200px 210px at 50% 42%, color-mix(in srgb,var(--a) 30%,transparent), transparent 72%)}
+  .face img{position:absolute;left:50%;bottom:26px;height:186px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(180deg,#000 84%,transparent 100%)}
+  .face img.wide{height:150px;bottom:52px}
+  .face::after{content:"";position:absolute;left:50%;bottom:16px;width:62%;height:16px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--a) 40%,transparent),transparent)}
+  .body{position:relative;flex:1;padding:2px 16px 16px;display:flex;flex-direction:column}
+  .role{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--a)}
+  .name{font-family:Fraunces,serif;font-weight:600;font-size:30px;letter-spacing:-.02em;margin-top:5px;line-height:1}
+  .greet{font-family:Fraunces,serif;font-style:italic;font-weight:500;font-size:14.5px;line-height:1.32;color:#ebe5d8;margin-top:9px}
+  .chip{margin-top:auto;align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:11px;color:#c9ccd9;padding:4px 9px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+  .chip b{color:var(--a);font-weight:500}
+</style></head>
+<body><div class="stage">
+  <header>
+    <h2>Pick your <em>avatar.</em></h2>
+    <p>The fun roster — twelve personalities, each reacting to your work in their own way.</p>
+  </header>
+  <div class="grid">
+    <div class="card" style="--a:#ffb86b"><span style="display:none"></span>
+      <div class="face"><img src="../avatars/portraits/trump.png"></div>
+      <div class="body"><div class="role">The Donald</div><div class="name">Donald</div>
+        <div class="greet">“Tremendous to be on your desktop. This machine? The best machine.”</div>
+        <span class="chip">mood <b>brash</b></span></div></div>
+    <div class="card" style="--a:#f5a3c7">
+      <div class="face"><img src="../avatars/portraits/kim.png"></div>
+      <div class="body"><div class="role">Socialite</div><div class="name">Kim K</div>
+        <div class="greet">“Your desktop looks amazing today. I'm watching everything, and honestly? Iconic.”</div>
+        <span class="chip">mood <b>composed</b></span></div></div>
+    <div class="card" style="--a:#c9b6ff">
+      <div class="face"><img src="../avatars/portraits/kanye.png"></div>
+      <div class="body"><div class="role">Creative Genius</div><div class="name">Ye</div>
+        <div class="greet">“I'm not saying I'm the best overlay on your desktop. But I am.”</div>
+        <span class="chip">mood <b>intense</b></span></div></div>
+    <div class="card" style="--a:#ffd05a">
+      <div class="face"><img src="../avatars/portraits/goku.png"></div>
+      <div class="body"><div class="role">Super Saiyan</div><div class="name">Goku</div>
+        <div class="greet">“Hey! Great to see you! There's some really strong work happening over here!”</div>
+        <span class="chip">mood <b>fired-up</b></span></div></div>
+    <div class="card" style="--a:#5fd4ff">
+      <div class="face"><img src="../avatars/portraits/vegeta.png"></div>
+      <div class="body"><div class="role">Prince of All Overlays</div><div class="name">Vegeta</div>
+        <div class="greet">“Hmph. Your desktop is... adequate. Barely. Do not waste my time.”</div>
+        <span class="chip">mood <b>haughty</b></span></div></div>
+    <div class="card" style="--a:#76d69a">
+      <div class="face"><img src="../avatars/portraits/luffy.png"></div>
+      <div class="body"><div class="role">Pirate Captain</div><div class="name">Luffy</div>
+        <div class="greet">“Shishishi! Your desktop's got a LOT of stuff on it. Hey — is there food anywhere on here?”</div>
+        <span class="chip">mood <b>hungry</b></span></div></div>
+    <div class="card" style="--a:#ffb35f">
+      <div class="face"><img src="../avatars/portraits/dalai.png"></div>
+      <div class="body"><div class="role">Gentle Monk</div><div class="name">Dalai Lama</div>
+        <div class="greet">“Every pixel on this desktop is a chance for kindness. Let us begin... gently.”</div>
+        <span class="chip">mood <b>serene</b></span></div></div>
+    <div class="card" style="--a:#ffe066">
+      <div class="face"><img src="../avatars/portraits/spongebob.png"></div>
+      <div class="body"><div class="role">Fry Cook</div><div class="name">SpongeBob</div>
+        <div class="greet">“I'm ready! I'm ready! Ready to watch your desktop, that is!”</div>
+        <span class="chip">mood <b>ready</b></span></div></div>
+    <div class="card" style="--a:#ffd83d">
+      <div class="face"><img src="../avatars/portraits/pikachu.png"></div>
+      <div class="body"><div class="role">Electric Mouse</div><div class="name">Pikachu</div>
+        <div class="greet">“Pika pika! Pikachu! Pika-chuuuu!”</div>
+        <span class="chip">mood <b>sparky</b></span></div></div>
+    <div class="card" style="--a:#8fd3ff">
+      <div class="face"><img src="../avatars/portraits/homer.png"></div>
+      <div class="body"><div class="role">Sitcom Dad</div><div class="name">Homer</div>
+        <div class="greet">“D'oh! Why am I on a computer? Mmm... is there a donuts folder on here?”</div>
+        <span class="chip">mood <b>dopey</b></span></div></div>
+    <div class="card" style="--a:#a9cbff">
+      <div class="face"><img src="../avatars/portraits/snoop.png"></div>
+      <div class="body"><div class="role">West Coast Legend</div><div class="name">Snoop</div>
+        <div class="greet">“The Dogg is on ya desktop now, keepin' it smooth. You dig?”</div>
+        <span class="chip">mood <b>mellow</b></span></div></div>
+    <div class="card" style="--a:#7fd7c4">
+      <div class="face"><img src="../avatars/portraits/elon.png"></div>
+      <div class="body"><div class="role">Tech Overlord</div><div class="name">Elon</div>
+        <div class="greet">“Nice desktop. Honestly, we could make it ten times better. Let's ship something today.”</div>
+        <span class="chip">mood <b>sardonic</b></span></div></div>
+  </div>
+</div></body></html>
