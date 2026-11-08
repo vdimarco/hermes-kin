@@ -25,7 +25,7 @@ Kin also ships with an optional **floating overlay** (`overlay/`) — a frameles
 - The character floats over your desktop (Hyprland). Her eyes track your real cursor position via the Hyprland socket — zero-spawn, anchored to the overlay's own on-screen position, so it works on any monitor.
 - A capsule bar shows the live status line ("Running terminal…"), the persona switcher, and the mic toggle. A right-click on the persona opens a character picker; each character is a hand-rigged 3D bust with her own voice.
 - The drawer underneath is plain English, grouped **Running / Queued / Recent**: active sessions with their real last activity, background processes named by the session that started them ("Launch Titanfall 2 VR mod — 5 background processes — 12h"), plan checklist items, and a per-tool event feed. Every row is two lines (what it is + what it's doing) with a colored status and age. Click a row to jump to that session.
-- **Voice, opt-in only.** The mic never starts by itself — you toggle it on. Speech is captured from your mic (the EMEET Pixy when connected, otherwise the system default), and transcription uses a local whisper.cpp build when one is installed, otherwise Hermes's own STT path (which filters known Whisper hallucinations). A transcript lands in the Hermes composer as a **draft you review and send** — voice never auto-sends. Two guards stop hallucination storms: ~0.5 s of speech before an STT call is spent, and identical consecutive transcripts are dropped within a 10-minute cooldown (logged to the event feed).
+- **Voice, opt-in only.** The mic never starts by itself — you toggle it on. Capture uses the browser `getUserMedia` API (each OS shows its own permission prompt; the system default input device is used), and transcription uses a local whisper.cpp build when one is installed, otherwise Hermes's own STT path (which filters known Whisper hallucinations). A transcript lands in the Hermes composer as a **draft you review and send** — voice never auto-sends. Two guards stop hallucination storms: ~0.5 s of speech before an STT call is spent, and identical consecutive transcripts are dropped within a 10-minute cooldown (logged to the event feed).
 - Quick actions (icon buttons): **camera** — screenshot the active window, OCR it, ask Hermes about it; **terminal** — OCR the active terminal, ask Hermes to diagnose it; **speaker** — a spoken recap of what is active.
 - A one-time onboarding trio explains the head click, the opt-in mic, and the snap action the first time the overlay runs.
 - Ask row with ArrowUp/ArrowDown history recall.
@@ -51,7 +51,7 @@ The overlay writes to the plugin's own SQLite settings table; the gateway dashbo
 - The **overlay** is a separate app you run yourself, and everything it can do is disclosed here:
   - Microphone capture, only after you toggle it on. It starts off at every launch, and says "Mic not found" instead of spinning if no mic is available.
   - Speech transcription goes to Hermes's configured STT provider (or a local whisper.cpp when installed); spoken recaps use Hermes's configured OpenAI TTS voice.
-  - Screen capture of the active window or terminal uses `grim`, OCR uses `tesseract`, and window queries use the Hyprland socket — all local, only when you click the action.
+  - Screen capture of the active window or terminal uses the OS-native tool (`grim` on Linux, `screencapture` on macOS, PowerShell on Windows), OCR uses `tesseract` when installed, and window queries use the Hyprland socket / AppleScript / Win32 — all local, only when you click the action.
   - It reads Hermes's session list and background process list (read-only) to draw the task drawer, and writes only to the Kin plugin's own SQLite table.
   - No telemetry. No accounts. Nothing leaves your machine except the STT/TTS calls above.
 
@@ -71,15 +71,15 @@ Or, once listed in the catalog: `hermes plugins install kin`.
 
 Hermes Desktop then needs one click, because the host leaves every desktop plugin off until you allow it: Capabilities, Plugins, enable Kin. If the pane is missing, use Rescan, then Reload desktop plugins.
 
-**Floating overlay** (optional; Node 22+, a Hyprland session, `grim`, `tesseract`, `pactl`):
+**Floating overlay** (optional; Node 22+, Electron — Linux, macOS, and Windows):
 
 ```bash
 cd overlay
 npm install        # electron + three
-./run.sh
+./run.sh           # Linux / macOS    (run.bat on Windows, or: npm start)
 ```
 
-The overlay is Linux/Wayland-only. It works without the plugin too, but the relay, moods, and task drawer need the plugin installed and enabled.
+Per-platform notes: gaze works everywhere via Electron's screen API. Snap/Term screenshots use `grim` on Linux, `screencapture` on macOS, and PowerShell's `CopyFromScreen` on Windows; OCR uses `tesseract` when installed (otherwise the prompt still attaches the screenshot for Hermes's vision). Window awareness uses the Hyprland socket on Linux and AppleScript / Win32 probes on macOS and Windows. It works without the plugin too, but the relay, moods, and task drawer need the plugin installed and enabled.
 
 Optional, for fully offline voice: install whisper.cpp with a ggml model at `~/.local/opt/whisper.cpp/models/` (or point `KIN_WHISPER_BIN` and `KIN_WHISPER_MODEL` at your build) — Kin picks it up automatically.
 

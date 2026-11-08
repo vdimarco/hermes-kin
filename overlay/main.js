@@ -1,5 +1,5 @@
 // Kin Float — floating companion HUD for Omarchy/Hyprland.
-const { app, BrowserWindow, ipcMain, session } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, session } = require("electron");
 const { execFile, spawn } = require("child_process");
 const net = require("net");
 const path = require("path");
@@ -333,11 +333,56 @@ function readTasksAndRecent(kinEvents) {
   };
 }
 
+// Screenshot a screen region, per platform. cb(outPath) or cb("").
+function captureRegion(geom, outPath, cb) {
+  if (process.platform === "linux") {
+    execFile("grim", ["-g", geom, outPath], { timeout: 2500 }, (err) => cb(err ? "" : outPath));
+    return;
+  }
+  if (process.platform === "darwin") {
+    // geom is "x,y WxH"
+    const [origin, size] = geom.split(" ");
+    execFile(
+      "screencapture",
+      ["-x", `-R${origin.replace(",", ",")},${size.replace("x", ",")}`, outPath],
+      { timeout: 3000 },
+      (err) => cb(err ? "" : outPath)
+    );
+    return;
+  }
+  if (process.platform === "win32") {
+    const [origin, size] = geom.split(" ");
+    const [x, y] = origin.split(",").map(Number);
+    const [w, h] = size.split("x").map(Number);
+    execFile(
+      "powershell",
+      [
+        "-NoProfile",
+        "-Command",
+        `Add-Type -AssemblyName System.Drawing; $b = New-Object System.Drawing.Bitmap ${w}, ${h}; $g = [System.Drawing.Graphics]::FromImage($b); $g.CopyFromScreen(${x}, ${y}, 0, 0, $b.Size); $b.Save('${outPath.replace(/\\/g, "\\\\")}'); $g.Dispose(); $b.Dispose()`,
+      ],
+      { timeout: 3500 },
+      (err) => cb(err ? "" : outPath)
+    );
+    return;
+  }
+  cb("");
+}
+
+function scratchDir() {
+  const d = path.join(os.homedir(), ".hermes", "cache", "scratch");
+  try { fs.mkdirSync(d, { recursive: true }); } catch {}
+  return d;
+}
+
 function captureAndOcrGeometry(geom, outBase, cb) {
-  const png = `/home/von/.hermes/cache/scratch/${outBase}.png`;
-  execFile("grim", ["-g", geom, png], { timeout: 2500 }, (err) => {
-    if (err) return cb("");
+  const png = path.join(scratchDir(), `${outBase}.png`);
+  captureRegion(geom, png, (pathOut) => {
+    if (!pathOut) return cb("", "");
+    // OCR is optional: tesseract when installed (any platform), otherwise
+    // the prompt still references the saved screenshot for Hermes's vision.
     execFile("tesseract", [png, "stdout", "--psm", "6"], { timeout: 4000 }, (err2, stdout) => {
+      if (err2) return cb("", png);
       const cleaned = String(stdout || "")
         .split("\n")
         .map((l) => l.trim())
@@ -401,6 +446,81 @@ function scanDesktopWindow(cb) {
   cb({ app: w.class || "Desktop", title: w.title || "", text: "", png: "" });
 }
 
+// Active desktop window, per platform. cb receives {class, title, at, size}
+// or null. Linux uses the Hyprland socket; macOS uses System Events; Windows
+// uses a small PowerShell Add-Type probe. All are optional — Snap falls back
+// to the last known window.
+function getActiveWindow(cb) {
+  if (process.platform === "linux" && HYPR_SOCK) {
+    hyprSocketCmd("j/activewindow", (stdout) => {
+      if (!stdout) return cb(null);
+      try {
+        const active = JSON.parse(stdout);
+        if (active && active.class && active.class !== "kin-float") {
+          return cb({
+            class: active.class,
+            title: active.title || active.class,
+            at: active.at || [0, 0],
+            size: active.size || [1920, 1080],
+          });
+        }
+      } catch {}
+      cb(null);
+    });
+    return;
+  }
+  if (process.platform === "darwin") {
+    execFile(
+      "osascript",
+      [
+        "-e",
+        'tell application "System Events" to tell (first process whose frontmost is true) to get {name, name of front window, position of front window, size of front window}',
+      ],
+      { timeout: 2000 },
+      (err, stdout) => {
+        if (err) return cb(null);
+        const parts = String(stdout || "").split(", ").map((s) => s.trim());
+        if (parts.length < 4) return cb(null);
+        const name = parts[0];
+        if (name === "kin-float" || name === "Electron") return cb(null);
+        cb({
+          class: name,
+          title: parts[1] === "missing value" ? name : parts[1],
+          at: [Number(parts[2]) || 0, Number(parts[3]) || 0],
+          size: [Number(parts[4]) || 1920, Number(parts[5]) || 1080],
+        });
+      }
+    );
+    return;
+  }
+  if (process.platform === "win32") {
+    execFile(
+      "powershell",
+      [
+        "-NoProfile",
+        "-Command",
+        "Add-Type @'\nusing System;using System.Runtime.InteropServices;using System.Text;\npublic class W { [DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\"user32.dll\")] public static extern bool GetWindowRect(IntPtr h, out R r); [DllImport(\"user32.dll\")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n); public struct R { public int L, T, Rt, B; } }\n'@\n$h=[W]::GetForegroundWindow(); if ($h -eq [IntPtr]::Zero) { '' } else { $r = New-Object W+R; [W]::GetWindowRect($h, [ref]$r) | Out-Null; $sb = New-Object System.Text.StringBuilder 512; [W]::GetWindowText($h, $sb, 512) | Out-Null; \"$($r.L),$($r.T),$($r.Rt),$($r.B),$($sb.ToString())\" }",
+      ],
+      { timeout: 2500 },
+      (err, stdout) => {
+        if (err) return cb(null);
+        const parts = String(stdout || "").trim().split(",");
+        if (parts.length < 5) return cb(null);
+        const title = parts.slice(4).join(",");
+        if (!title || title === "kin-float") return cb(null);
+        cb({
+          class: title.split(" - ").pop() || title,
+          title,
+          at: [Number(parts[0]) || 0, Number(parts[1]) || 0],
+          size: [Math.max(50, (Number(parts[2]) || 1920) - (Number(parts[0]) || 0)), Math.max(50, (Number(parts[3]) || 1080) - (Number(parts[1]) || 0))],
+        });
+      }
+    );
+    return;
+  }
+  cb(null);
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 330,
@@ -427,19 +547,16 @@ function createWindow() {
     console.log("[renderer]", message);
   });
 
-  // 1. Poll global Wayland cursor via zero-spawn Hyprland UNIX socket (~40fps)
+  // 1. Gaze follows the global cursor — Electron's screen API works the same
+  //    on Linux, macOS and Windows (no Hyprland socket, no spawns).
   let pollingCursor = false;
   setInterval(() => {
     if (!win || win.isDestroyed() || pollingCursor) return;
     pollingCursor = true;
-    hyprSocketCmd("cursorpos", (stdout) => {
-      pollingCursor = false;
-      if (!stdout || !win || win.isDestroyed()) return;
-      const parts = stdout.trim().split(",");
-      if (parts.length < 2) return;
-      const cx = Number(parts[0].trim());
-      const cy = Number(parts[1].trim());
-      if (!Number.isFinite(cx) || !Number.isFinite(cy)) return;
+    try {
+      const pt = screen.getCursorScreenPoint();
+      const cx = pt.x;
+      const cy = pt.y;
       // Anchor gaze at the overlay's own on-screen position so the avatar
       // tracks correctly on any monitor size or position — never a fixed point.
       const [winX, winY] = win.getPosition();
@@ -449,28 +566,16 @@ function createWindow() {
       const dx = Math.max(-1, Math.min(1, (cx - refX) / 900));
       const dy = Math.max(-1, Math.min(1, (cy - refY) / 500));
       win.webContents.send("kin:gaze", { dx, dy });
-    });
+    } catch {}
+    pollingCursor = false;
   }, 25);
 
-  // 2. Watch active desktop window via zero-spawn Hyprland UNIX socket
-  let pollingWin = false;
+  // 2. Watch the active desktop window (platform-aware)
   setInterval(() => {
-    if (!win || win.isDestroyed() || pollingWin) return;
-    pollingWin = true;
-    hyprSocketCmd("j/activewindow", (stdout) => {
-      pollingWin = false;
-      if (!stdout) return;
-      try {
-        const active = JSON.parse(stdout);
-        if (active && active.class && active.class !== "kin-float") {
-          lastActiveDesktopWin = {
-            class: active.class,
-            title: active.title || active.class,
-            at: active.at || [0, 0],
-            size: active.size || [1920, 1080],
-          };
-        }
-      } catch {}
+    if (!win || win.isDestroyed()) return;
+    getActiveWindow((active) => {
+      if (!active) return;
+      lastActiveDesktopWin = active;
     });
   }, 1000);
 
@@ -581,13 +686,8 @@ app.whenReady().then(() => {
   }
 });
 
-let micProc = null;
-let micRunning = false;
-let micSpeaking = false;
-let micSpeechBuffers = [];
-let micPreRoll = [];
-let micSilenceFrames = 0;
-let micSpeechFrames = 0;
+// Mic state lives in the renderer (getUserMedia); main only tracks
+// whether it is on and whether an STT call is in flight.
 let micTranscribing = false;
 let lastAutoPrompt = "";
 let lastAutoPromptAt = 0;
@@ -637,14 +737,14 @@ function localWhisperTranscribe(wavPath, cb) {
 function transcribeUtteranceBuffer(pcmBuffer) {
   if (micTranscribing || pcmBuffer.length < 9600) return;
   micTranscribing = true;
-  const wavPath = `/home/von/.hermes/cache/scratch/kin-utt-${Date.now()}.wav`;
+  const wavPath = path.join(scratchDir(), `kin-utt-${Date.now()}.wav`);
   try {
     writePcmWav(wavPath, pcmBuffer, 16000);
   } catch {
     micTranscribing = false;
     return;
   }
-  if (win && !win.isDestroyed()) {
+  if (micRunning && win && !win.isDestroyed()) {
     win.webContents.send("kin:mic", { active: true, level: 0.1, speaking: false, status: "SENDING…" });
     win.webContents.send("kin:toast", "🎙 Transcribing speech…");
   }
@@ -655,7 +755,7 @@ function transcribeUtteranceBuffer(pcmBuffer) {
     }
     const pyCode = [
       "import sys, json",
-      'sys.path.insert(0, "/home/von/.hermes/hermes-agent")',
+      'import os; sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))',
       "from tools.voice_mode import transcribe_recording",
       "res = transcribe_recording(sys.argv[1])",
       'print("KIN_STT_JSON:" + json.dumps(res))',
@@ -710,180 +810,63 @@ function finishTranscription(wavPath, parsed) {
   } catch {}
 }
 
-let micDeviceCache = null;
-let micStartAttempts = 0;
-let micStartedAt = 0;
+// ---- Mic (renderer getUserMedia engine — cross-platform) ----
+// Audio capture runs in the renderer via getUserMedia, which works the same
+// on Linux, macOS and Windows (with each OS's own permission prompt). The
+// renderer runs the VAD and ships completed 16 kHz utterances here as PCM.
 
-function resolveMicDevice(cb) {
-  // Prefer the EMEET Pixy when it is connected; otherwise the PulseAudio
-  // default source. A missing hardcoded device used to spin the restart loop.
-  if (micDeviceCache) return cb(micDeviceCache);
-  execFile("/usr/bin/pactl", ["list", "sources", "short"], { timeout: 3000 }, (err, stdout) => {
-    const out = String(stdout || "");
-    micDeviceCache = out.includes("EMEET_EMEET_PIXY")
-      ? "alsa_input.usb-EMEET_EMEET_PIXY_A260801001005911-02.mono-fallback"
-      : "@DEFAULT_SOURCE@";
-    cb(micDeviceCache);
-  });
-}
+let micRunning = false;
 
-function startNativeMicLoop() {
-  if (micRunning) return;
+function startMic() {
   micRunning = true;
   voiceActiveLocal = true;
   setKinSetting("voice_active", "true");
   setKinSetting("mood", "attentive");
   setKinSetting("line", "🎙 Mic Live · Speak anytime");
-  resolveMicDevice((device) => {
-    if (!micRunning) return;
-    micStartedAt = Date.now();
-    micProc = spawn(
-      "/usr/bin/parecord",
-      [
-        "--device=" + device,
-        "--raw",
-        "--rate=16000",
-        "--channels=1",
-        "--format=s16le",
-        "--latency-msec=40",
-      ],
-      {
-        stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env, XDG_RUNTIME_DIR: process.env.XDG_RUNTIME_DIR || "/run/user/1000" },
-      }
-    );
-    attachMicHandlers();
-  });
+  if (win && !win.isDestroyed()) {
+    win.webContents.send("kin:mic-cmd", { action: "start" });
+  }
 }
 
-function attachMicHandlers() {
-  micProc.stderr.on("data", (d) => console.error("[parecord]", d.toString().trim()));
-
-  micProc.stdout.on("data", (chunk) => {
-    if (!micRunning || chunk.length < 4) return;
-    const samples = chunk.length >> 1;
-    let sumSq = 0;
-    const bars = [0, 0, 0, 0];
-    const quarter = Math.max(1, samples >> 2);
-    for (let i = 0; i < samples; i++) {
-      const s = chunk.readInt16LE(i << 1);
-      const abs = Math.abs(s);
-      sumSq += s * s;
-      const bIdx = Math.min(3, Math.floor(i / quarter));
-      if (abs > bars[bIdx]) bars[bIdx] = abs;
-    }
-    const rms = Math.sqrt(sumSq / samples);
-    const level = Math.min(1, rms / 2200);
-    const normBars = bars.map((v) => Math.min(1, v / 4500));
-
-    // Voice activity detection (EMEET Pixy ambient noise is ~100-180 RMS, speech is >480 RMS)
-    const isVoice = rms > 460;
-    if (isVoice) {
-      if (!micSpeaking) {
-        micSpeaking = true;
-        micSpeechBuffers = [...micPreRoll];
-        micSpeechFrames = 0;
-      }
-      micSpeechBuffers.push(Buffer.from(chunk));
-      micSpeechFrames += 1;
-      micSilenceFrames = 0;
-    } else {
-      micPreRoll.push(Buffer.from(chunk));
-      if (micPreRoll.length > 8) micPreRoll.shift();
-      if (micSpeaking) {
-        micSpeechBuffers.push(Buffer.from(chunk));
-        micSilenceFrames += 1;
-        // ~1.0s of silence after speech (or >11s continuous speech) triggers transcription
-        if (micSilenceFrames >= 18 || micSpeechFrames >= 220) {
-          const fullPcm = Buffer.concat(micSpeechBuffers);
-          micSpeaking = false;
-          micSpeechBuffers = [];
-          micSilenceFrames = 0;
-          // Require ~0.5s of actual speech (12 x 40ms frames) before spending an
-          // STT call — 160ms blips (notification chimes, clicks) fed the
-          // hallucination loop that spammed chats with repeat messages.
-          if (micSpeechFrames >= 12) {
-            transcribeUtteranceBuffer(fullPcm);
-          }
-          micSpeechFrames = 0;
-        }
-      }
-    }
-
-    if (win && !win.isDestroyed()) {
-      win.webContents.send("kin:mic", {
-        active: true,
-        level,
-        bars: normBars,
-        speaking: micSpeaking,
-        status: micTranscribing
-          ? "SENDING…"
-          : micSpeaking
-          ? `HEARING ${Math.min(99, Math.round(level * 100))}%`
-          : "MIC LIVE",
-      });
-    }
-  });
-
-  micProc.on("exit", (code) => {
-    micProc = null;
-    if (!micRunning) return;
-    const livedMs = Date.now() - micStartedAt;
-    if (code !== 0 && livedMs < 2500) {
-      micStartAttempts += 1;
-      if (micStartAttempts >= 3) {
-        // No usable microphone: stop the restart loop and say so plainly.
-        micRunning = false;
-        voiceActiveLocal = false;
-        micStartAttempts = 0;
-        micDeviceCache = null;
-        setKinSetting("voice_active", "false");
-        setKinSetting("mood", "concerned");
-        setKinSetting("line", "Mic not found.");
-        if (win && !win.isDestroyed()) {
-          win.webContents.send("kin:mic", { active: false, level: 0, bars: [0, 0, 0, 0], speaking: false, status: "MIC NOT FOUND" });
-          win.webContents.send("kin:toast", "🔇 No microphone found — connect one and tap the mic again.");
-        }
-        return;
-      }
-    } else {
-      micStartAttempts = 0;
-    }
-    setTimeout(() => {
-      if (micRunning) {
-        micRunning = false;
-        startNativeMicLoop();
-      }
-    }, 1000);
-  });
-}
-
-function stopNativeMicLoop() {
+function stopMic(notifyUi = true) {
   micRunning = false;
   voiceActiveLocal = false;
-  micSpeaking = false;
-  micSpeechBuffers = [];
-  if (micProc) {
-    try {
-      micProc.kill("SIGTERM");
-    } catch {}
-    micProc = null;
-  }
   setKinSetting("voice_active", "false");
   setKinSetting("mood", "idle");
   setKinSetting("line", "Mic muted");
-  if (win && !win.isDestroyed()) {
-    win.webContents.send("kin:mic", { active: false, level: 0, bars: [0, 0, 0, 0], speaking: false, status: "MIC OFF" });
+  if (notifyUi && win && !win.isDestroyed()) {
+    win.webContents.send("kin:mic-cmd", { action: "stop" });
   }
 }
 
+ipcMain.on("kin:voice-utterance", (_e, pcmBuffer) => {
+  try {
+    if (!pcmBuffer || !pcmBuffer.byteLength) return;
+    transcribeUtteranceBuffer(Buffer.from(pcmBuffer));
+  } catch (err) {
+    console.error("[voice] utterance error:", err);
+  }
+});
+
+
 function focusHermesWindow() {
-  execFile(
-    "/usr/share/omarchy/bin/omarchy-launch-or-focus",
-    ["Hermes", "/home/von/.local/bin/hermes-desktop"],
-    () => {}
-  );
-  execFile("hyprctl", ["dispatch", 'hl.dsp.focus({ window = "class:^Hermes$" })'], () => {});
+  if (process.platform === "linux") {
+    execFile(
+      "/usr/share/omarchy/bin/omarchy-launch-or-focus",
+      ["Hermes", path.join(os.homedir(), ".local", "bin", "hermes-desktop")],
+      () => {}
+    );
+    execFile("hyprctl", ["dispatch", 'hl.dsp.focus({ window = "class:^Hermes$" })'], () => {});
+    return;
+  }
+  if (process.platform === "darwin") {
+    execFile("open", ["-a", "Hermes"], () => {});
+    return;
+  }
+  if (process.platform === "win32") {
+    execFile("powershell", ["-NoProfile", "-Command",
+      "$p = Get-Process | Where-Object { $_.MainWindowTitle -and $_.Name -eq 'Hermes' } | Select-Object -First 1; if ($p) { Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::AppActivate($p.Id) | Out-Null }"], () => {});
+  }
 }
 
 const AVATAR_VOICES = {
@@ -894,68 +877,18 @@ const AVATAR_VOICES = {
   vance: { voice: "echo", role: "Spec-Ops AI", greet: "Vance on comms. Tactical feed active." },
   elena: { voice: "sage", role: "Arcane Archivist", greet: "Elena here. Archives and logs are open." },
   lyra: { voice: "fable", role: "Astral Oracle", greet: "Lyra listening. The threads are clear." },
-  // Flat-cartoon caricature personas (kin-2d.js). Voice + delivery style —
-  // stylized parody personas, never a real person's cloned voice.
-  trump: {
-    voice: "onyx",
-    role: "The Donald",
-    instructions: "Bombastic New York real-estate mogul parody: grand self-congratulatory superlatives, supreme confidence, tangents about how tremendous everything is.",
-    greet: "Tremendous to be on your desktop. This machine? The best machine. Nobody runs a desktop better than us, believe me.",
-  },
-  kim: {
-    voice: "shimmer",
-    role: "Kim K",
-    instructions: "Polished Los Angeles socialite: breathy, calm, unhurried, perfectly composed, faint vocal fry.",
-    greet: "Hey. Your desktop looks amazing today. I'm watching everything, and honestly? Iconic.",
-  },
-  kanye: {
-    voice: "echo",
-    role: "Ye",
-    instructions: "Intense, passionate creative genius: emphatic, swings between calm reflection and excited declarations of brilliance.",
-    greet: "Yo. I'm not saying I'm the best overlay on your desktop. But I am saying... I'm the best overlay on your desktop.",
-  },
-  goku: {
-    voice: "ash",
-    role: "Goku",
-    instructions: "Hot-blooded heroic anime protagonist: boundless friendly energy, excited, loves training and a good fight.",
-    greet: "Hey! Great to see you! I'm watching your desktop — there's some really strong work happening over here!",
-  },
-  vegeta: {
-    voice: "onyx",
-    role: "Prince Vegeta",
-    instructions: "Arrogant saiyan prince: clipped, haughty, prideful, disdainful, reluctantly impressed.",
-    greet: "Hmph. I am the prince of all overlays. Your desktop is... adequate. Barely. Do not waste my time.",
-  },
-  luffy: {
-    voice: "verse",
-    role: "Luffy",
-    instructions: "Cheerful carefree pirate captain: simple direct words, always a little hungry, laughs easily.",
-    greet: "Shishishi! I'm Luffy! Your desktop's got a LOT of stuff on it. Hey — is there food anywhere on here?",
-  },
-  dalai: {
-    voice: "sage",
-    role: "Dalai Lama",
-    instructions: "Gentle elderly Tibetan monk: serene warmth, unhurried, compassionate, softly humorous.",
-    greet: "Ah, hello my friend. Every pixel on this desktop is a chance for kindness. Let us begin... gently.",
-  },
-  spongebob: {
-    voice: "coral",
-    role: "SpongeBob",
-    instructions: "Squeaky, bubbly, relentlessly enthusiastic underwater fry cook: pure joy, always ready.",
-    greet: "I'm ready! I'm ready! Ready to watch your desktop, that is! Aye aye, captain!",
-  },
 };
 
 function speakCharacterLine(voice, text, instructions) {
   const py = [
     "import sys, subprocess, urllib.request, json, time",
-    'sys.path.insert(0, "/home/von/.hermes/hermes-agent")',
+    'import os; sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))',
     "from tools.tts_tool_openai import _resolve_openai_audio_client_config",
     "key, base, _ = _resolve_openai_audio_client_config()",
     "voice, text = sys.argv[1], sys.argv[2]",
     "payload = {'model': 'gpt-4o-mini-tts', 'voice': voice, 'input': text, 'instructions': (sys.argv[3] if len(sys.argv) > 3 else '')}",
     "req = urllib.request.Request(base.rstrip('/') + '/audio/speech', data=json.dumps(payload).encode(), headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})",
-    "mp3 = '/home/von/.hermes/cache/scratch/kin-voice-%s-%d.mp3' % (voice, int(time.time()))",
+    "import pathlib; mp3 = str(pathlib.Path.home() / '.hermes' / 'cache' / 'scratch' / ('kin-voice-%s-%d.mp3' % (voice, int(time.time()))))",
     "open(mp3, 'wb').write(urllib.request.urlopen(req, timeout=25).read())",
     "print(mp3)",
   ].join("; ");
@@ -1016,9 +949,19 @@ ipcMain.on("kin:action", (e, payload) => {
   }
   if (kind === "toggle-mic") {
     if (micRunning) {
-      stopNativeMicLoop();
+      stopMic();
     } else {
-      startNativeMicLoop();
+      startMic();
+    }
+    return;
+  }
+  if (kind === "mic-failed") {
+    // Renderer could not open the microphone (denied or none available).
+    stopMic(false);
+    setKinSetting("mood", "concerned");
+    setKinSetting("line", "Mic not found.");
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("kin:toast", "🔇 No microphone available — connect one and tap the mic again.");
     }
     return;
   }

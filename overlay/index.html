@@ -791,6 +791,157 @@ micBtn.addEventListener("click", (e) => {
   window.kinFloat?.act?.({ kind: "toggle-mic" });
 });
 
+// ---- Mic engine (getUserMedia — cross-platform) ----
+// Capture runs here in the renderer, so Linux, macOS and Windows all work
+// with each OS's own permission prompt. VAD picks utterances and ships
+// 16 kHz PCM to the main process for transcription (and drafting).
+let micStream = null;
+let micCtx = null;
+let micNode = null;
+let micSink = null;
+let micEngSpeaking = false;
+let micEngSpeech = [];
+let micEngPreRoll = [];
+let micEngSilence = 0;
+let micEngFrames = 0;
+
+window.kinFloat?.onMicCmd?.(({ action }) => {
+  if (action === "start") micEngineStart();
+  else if (action === "stop") micEngineStop();
+});
+
+async function micEngineStart() {
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  } catch {
+    micUI(false, "MIC NOT FOUND");
+    window.kinFloat?.act?.({ kind: "mic-failed" });
+    return;
+  }
+  micStream = stream;
+  try {
+    micCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+  } catch {
+    micCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  const src = micCtx.createMediaStreamSource(micStream);
+  micNode = micCtx.createScriptProcessor(2048, 1, 1);
+  micNode.onaudioprocess = (e) => {
+    const f32 = e.inputBuffer.getChannelData(0);
+    let sumSq = 0;
+    const bars = [0, 0, 0, 0];
+    const quarter = Math.max(1, f32.length >> 2);
+    for (let i = 0; i < f32.length; i++) {
+      const v = f32[i];
+      sumSq += v * v;
+      const b = Math.min(3, Math.floor(i / quarter));
+      if (Math.abs(v) > bars[b]) bars[b] = Math.abs(v);
+    }
+    const rms = Math.sqrt(sumSq / f32.length);
+    const level = Math.min(1, rms * 12);
+    const normBars = bars.map((v) => Math.min(1, v * 2.5));
+    const isVoice = rms > 0.018;
+    // VAD state machine — frame = 2048 samples ≈ 128 ms at 16 kHz.
+    if (isVoice) {
+      if (!micEngSpeaking) {
+        micEngSpeaking = true;
+        micEngSpeech = [...micEngPreRoll];
+        micEngFrames = 0;
+      }
+      micEngSpeech.push(Float32Array.from(f32));
+      micEngFrames += 1;
+      micEngSilence = 0;
+    } else {
+      micEngPreRoll.push(Float32Array.from(f32));
+      if (micEngPreRoll.length > 3) micEngPreRoll.shift();
+      if (micEngSpeaking) {
+        micEngSpeech.push(Float32Array.from(f32));
+        micEngSilence += 1;
+        // ~1s of trailing silence (or >10s of speech) ends the utterance.
+        if (micEngSilence >= 8 || micEngFrames >= 80) {
+          const full = micEngSpeech;
+          micEngSpeaking = false;
+          micEngSpeech = [];
+          micEngSilence = 0;
+          // Require ~0.5s of speech before spending an STT call.
+          if (micEngFrames >= 4) shipUtterance(full, micCtx.sampleRate);
+          micEngFrames = 0;
+        }
+      }
+    }
+    micUI(true, micEngSpeaking ? `HEARING ${Math.min(99, Math.round(level * 100))}%` : "MIC LIVE", level, normBars, micEngSpeaking);
+  };
+  src.connect(micNode);
+  // The processor only runs when connected; sink at zero gain so the mic
+  // never echoes back out.
+  micSink = micCtx.createGain();
+  micSink.gain.value = 0;
+  micNode.connect(micSink);
+  micSink.connect(micCtx.destination);
+  micUI(true, "MIC LIVE");
+}
+
+function shipUtterance(chunks, sampleRate) {
+  const flat = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
+  let o = 0;
+  for (const c of chunks) {
+    flat.set(c, o);
+    o += c.length;
+  }
+  let pcm = flat;
+  if (Math.abs(sampleRate - 16000) > 1) {
+    const ratio = sampleRate / 16000;
+    const outLen = Math.floor(flat.length / ratio);
+    pcm = new Float32Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      const t = i * ratio;
+      const i0 = Math.floor(t);
+      const i1 = Math.min(flat.length - 1, i0 + 1);
+      pcm[i] = flat[i0] + (flat[i1] - flat[i0]) * (t - i0);
+    }
+  }
+  const i16 = new Int16Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) {
+    const v = Math.max(-1, Math.min(1, pcm[i]));
+    i16[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+  }
+  window.kinFloat?.sendVoice?.(i16.buffer);
+}
+
+function micEngineStop() {
+  try { if (micNode) micNode.onaudioprocess = null; } catch {}
+  try { if (micStream) micStream.getTracks().forEach((t) => t.stop()); } catch {}
+  try { if (micCtx) micCtx.close(); } catch {}
+  micStream = null;
+  micCtx = null;
+  micNode = null;
+  micSink = null;
+  micEngSpeaking = false;
+  micEngSpeech = [];
+  micEngPreRoll = [];
+  micUI(false, "MIC OFF");
+}
+
+function micUI(active, _status, level = 0, bars = [0, 0, 0, 0], speaking = false) {
+  micEnabled = active;
+  root.classList.toggle("mic-on", active);
+  root.classList.toggle("mic-speaking", Boolean(active && speaking));
+  if (active) {
+    eqBars.forEach((bar, idx) => {
+      const bVal = Array.isArray(bars) ? Number(bars[idx] || 0) : Number(level || 0);
+      bar.style.height = `${Math.max(3, Math.round(3 + bVal * 8))}px`;
+    });
+    if (speaking) {
+      pillText.textContent = "Hearing you…";
+      toastUntil = Date.now() + 800;
+    }
+  }
+}
+
+
 // Avatar pill: left-click opens the persona picker (right-click works too)
 personaBtn.addEventListener("click", (e) => {
   e.stopPropagation();

@@ -4,6 +4,11 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("kinFloat", {
   act: (payload) => ipcRenderer.send("kin:action", payload),
   quit: () => ipcRenderer.send("kin:quit"),
+  sendVoice: (buf) => ipcRenderer.send("kin:voice-utterance", buf),
+  onMicCmd: (cb) => {
+    ipcRenderer.on("kin:mic-cmd", (e, msg) => cb(msg));
+    return () => ipcRenderer.removeAllListeners("kin:mic-cmd");
+  },
   onGaze: (cb) => {
     ipcRenderer.on("kin:gaze", (e, gaze) => cb(gaze));
     return () => ipcRenderer.removeAllListeners("kin:gaze");
