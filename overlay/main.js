@@ -587,6 +587,7 @@ function createWindow() {
     const state = pollKinDb();
     if (!state) return;
     const { settings, latest, events } = state;
+    handleSpeechReady(settings.speech_ready);
     const now = Date.now();
     const lists = readTasksAndRecent(events);
     const asleep = ["1", "true", "yes", "on"].includes(String(settings.sleep || "").toLowerCase());
@@ -681,7 +682,9 @@ app.whenReady().then(() => {
       if (win && !win.isDestroyed()) {
         win.webContents.send("kin:toast", `${meta.role} · Voice: ${meta.voice}`);
       }
-      speakCharacterLine(meta.voice, meta.greet, meta.instructions);
+      execFile("hermes", ["config", "set", "tts.openai.voice", meta.voice], () => {
+        speakCharacterLine(meta.greet, meta.instructions);
+      });
     }, 2500);
   }
 });
@@ -870,12 +873,12 @@ function focusHermesWindow() {
 }
 
 const AVATAR_VOICES = {
-  kin: { voice: "shimmer", role: "Companion", greet: "Kin online. Watching your desktop." },
-  freya: { voice: "nova", role: "Northern Valkyrie", greet: "Freya standing by. Your shield is up." },
-  sera: { voice: "coral", role: "Neural Architect", greet: "Sera linked. Neural telemetry online." },
-  kael: { voice: "onyx", role: "Sunmane Commander", greet: "Commander Kael here. Ready for orders." },
-  vance: { voice: "echo", role: "Spec-Ops AI", greet: "Vance on comms. Tactical feed active." },
-  elena: { voice: "sage", role: "Arcane Archivist", greet: "Elena here. Archives and logs are open." },
+  kin: { voice: "shimmer", role: "Companion", greet: "Kin online. Watching your desktop.", instructions: "Warm friendly AI companion." },
+  freya: { voice: "nova", role: "Northern Valkyrie", greet: "Freya standing by. Your shield is up.", instructions: "Northern valkyrie: strong, noble, protective." },
+  sera: { voice: "coral", role: "Neural Architect", greet: "Sera linked. Neural telemetry online.", instructions: "Neural architect: bright, technical, precise." },
+  kael: { voice: "onyx", role: "Sunmane Commander", greet: "Commander Kael here. Ready for orders.", instructions: "Battle commander: firm, commanding, decisive." },
+  vance: { voice: "echo", role: "Spec-Ops AI", greet: "Vance on comms. Tactical feed active.", instructions: "Spec-ops operator: clipped, tactical, cool." },
+  elena: { voice: "sage", role: "Arcane Archivist", greet: "Elena here. Archives and logs are open.", instructions: "Arcane archivist: scholarly, precise, calm." },
   // Cartoon personas (2D portraits).
   zip: { voice: "verse", role: "Systems Sidekick", greet: "Zip online. Your builds are in good hands.", instructions: "Cheerful little robot sidekick: bright, quick, upbeat." },
   juno: { voice: "alloy", role: "Focus Coach", greet: "Juno here. Let's get you unstuck.", instructions: "Confident focus coach: warm, direct, encouraging." },
@@ -886,36 +889,45 @@ const AVATAR_VOICES = {
   moss: { voice: "onyx", role: "Chill Navigator", greet: "Moss here. No rush. We'll get there.", instructions: "Laid-back sloth: slow, mellow, unbothered, a little amused." },
 };
 
-function speakCharacterLine(voice, text, instructions) {
-  const py = [
-    "import sys, subprocess, urllib.request, json, time",
-    'import os; sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))',
-    "from tools.tts_tool_openai import _resolve_openai_audio_client_config",
-    "key, base, _ = _resolve_openai_audio_client_config()",
-    "voice, text = sys.argv[1], sys.argv[2]",
-    "payload = {'model': 'gpt-4o-mini-tts', 'voice': voice, 'input': text, 'instructions': (sys.argv[3] if len(sys.argv) > 3 else '')}",
-    "req = urllib.request.Request(base.rstrip('/') + '/audio/speech', data=json.dumps(payload).encode(), headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})",
-    "import pathlib; mp3 = str(pathlib.Path.home() / '.hermes' / 'cache' / 'scratch' / ('kin-voice-%s-%d.mp3' % (voice, int(time.time()))))",
-    "open(mp3, 'wb').write(urllib.request.urlopen(req, timeout=25).read())",
-    "print(mp3)",
-  ].join("; ");
-  execFile("python3", ["-c", py, voice, text, instructions || ""], { timeout: 35000 }, (err, stdout, stderr) => {
-    if (err) console.error("[tts] execFile error:", String(err && err.message).slice(0, 300));
-    if (stderr) console.error("[tts] stderr:", String(stderr).slice(0, 300));
-    const out = String(stdout || "");
-    const mp3 = out.trim().split("\n").pop();
-    if (err || !mp3.startsWith("/")) return;
-    // Renderer-first: it plays the file through WebAudio and lip-syncs the
-    // 2D mouth off the live analyser level. If it never acks (no window yet,
-    // autoplay blocked), fall back to plain ffplay.
-    if (win && !win.isDestroyed()) {
-      win.webContents.send("kin:speak", { mp3 });
-      const t = setTimeout(() => ffplayMp3(mp3), 2500);
-      speakAcks.set(mp3, t);
-    } else {
-      ffplayMp3(mp3);
-    }
-  });
+// Spoken lines go through the Kin plugin, which calls Hermes's own
+// text_to_speech tool: Hermes picks the provider and holds its key, and the
+// overlay never reads a credential. The request rides the plugin's settings
+// table; the plugin relays it while the Kin pane is open in Hermes Desktop.
+// The voice is Hermes's own TTS voice, which a persona switch sets.
+let speechSeq = 0;
+let lastSpeechId = "";
+
+function speakCharacterLine(text, instructions) {
+  const id = `${Date.now()}-${++speechSeq}`;
+  lastSpeechId = id;
+  setKinSetting("pending_speech", JSON.stringify({ id, text, instructions: instructions || "" }));
+}
+
+function handleSpeechReady(raw) {
+  if (!raw) return;
+  setKinSetting("speech_ready", "");
+  let res = null;
+  try {
+    res = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  if (!res || res.id !== lastSpeechId) return;
+  if (res.path) playSpokenFile(String(res.path));
+  else if (res.error) logKinEvent("voice", "speak-failed", false, String(res.error).slice(0, 80));
+}
+
+function playSpokenFile(mp3) {
+  // Renderer-first: it plays the file through WebAudio and lip-syncs the
+  // 2D mouth off the live analyser level. If it never acks (no window yet,
+  // autoplay blocked), fall back to plain ffplay.
+  if (win && !win.isDestroyed()) {
+    win.webContents.send("kin:speak", { mp3 });
+    const t = setTimeout(() => ffplayMp3(mp3), 2500);
+    speakAcks.set(mp3, t);
+  } else {
+    ffplayMp3(mp3);
+  }
 }
 
 const speakAcks = new Map();
@@ -931,12 +943,17 @@ ipcMain.on("kin:action", (e, payload) => {
     const meta = AVATAR_VOICES[id] || AVATAR_VOICES.kin;
     setKinSetting("avatar_id", id);
     setKinSetting("avatar_voice", meta.voice);
-    execFile("hermes", ["config", "set", "tts.openai.voice", meta.voice], () => {});
+    // A persona's voice is Hermes's own TTS voice: switching persona runs
+    // `hermes config set` for tts.openai.voice and voice.gpt_live.voice, so it
+    // applies to Hermes as a whole (disclosed in the README). Greet only once
+    // the voice is saved, so the greeting uses it.
     execFile("hermes", ["config", "set", "voice.gpt_live.voice", meta.voice], () => {});
+    execFile("hermes", ["config", "set", "tts.openai.voice", meta.voice], () => {
+      speakCharacterLine(meta.greet, meta.instructions);
+    });
     if (win && !win.isDestroyed()) {
       win.webContents.send("kin:toast", `${payload?.label || id} · Voice: ${meta.voice}`);
     }
-    speakCharacterLine(meta.voice, meta.greet, meta.instructions);
     return;
   }
   if (kind === "speak-ack" || kind === "speak-fallback") {
@@ -987,7 +1004,6 @@ ipcMain.on("kin:action", (e, payload) => {
   }
   if (kind === "see-desktop") {
     const s = pollKinDb()?.settings || {};
-    const voice = s.avatar_voice || "sage";
     const personaMeta = AVATAR_VOICES[s.avatar_id] || {};
     if (win && !win.isDestroyed()) {
       win.webContents.send("kin:toast", `📸 Capturing ${lastActiveDesktopWin.class || "screen"}…`);
@@ -999,7 +1015,7 @@ ipcMain.on("kin:action", (e, payload) => {
       if (win && !win.isDestroyed()) {
         win.webContents.send("kin:toast", `📸 ${summaryLine}`);
       }
-      speakCharacterLine(voice, `Captured ${res.app}. Sending to Hermes.`, personaMeta.instructions);
+      speakCharacterLine(`Captured ${res.app}. Sending to Hermes.`, personaMeta.instructions);
       const snippet = res.text ? `\nOCR:\n\`\`\`\n${res.text}\n\`\`\`` : "";
       const imgNote = res.png ? ` (screenshot saved at ${res.png})` : "";
       const prompt = `[Kin Screen Capture] Active window: ${res.app} — "${res.title}"${imgNote}.${snippet}\nAnalyze what's on my screen and help me with it.`;
@@ -1010,7 +1026,6 @@ ipcMain.on("kin:action", (e, payload) => {
   }
   if (kind === "read-terminal") {
     const s = pollKinDb()?.settings || {};
-    const voice = s.avatar_voice || "sage";
     const personaMeta = AVATAR_VOICES[s.avatar_id] || {};
     if (win && !win.isDestroyed()) {
       win.webContents.send("kin:toast", "🔧 Inspecting terminal & logs…");
@@ -1023,7 +1038,7 @@ ipcMain.on("kin:action", (e, payload) => {
           latestTerminalSnippet ? `🔧 ${latestTerminalSnippet}` : `🔧 Sent ${res.source} to Hermes`
         );
       }
-      speakCharacterLine(voice, `Checking ${res.source} for errors.`, personaMeta.instructions);
+      speakCharacterLine(`Checking ${res.source} for errors.`, personaMeta.instructions);
       const body = res.text
         ? `[Kin Fix Error from ${res.source}]\n\`\`\`\n${res.text}\n\`\`\`\nDiagnose any errors or issues in this terminal output and fix them.`
         : `[Kin Fix Error] Read my active terminal or latest command logs, diagnose any errors, and fix them.`;
@@ -1035,7 +1050,6 @@ ipcMain.on("kin:action", (e, payload) => {
   if (kind === "voice-recap") {
     const state = pollKinDb();
     const s = state?.settings || {};
-    const voice = s.avatar_voice || "sage";
     const personaMeta = AVATAR_VOICES[s.avatar_id] || {};
     const lists = readTasksAndRecent(state?.events || []);
     const activeCount = lists.active.length;
@@ -1050,19 +1064,18 @@ ipcMain.on("kin:action", (e, payload) => {
     if (win && !win.isDestroyed()) {
       win.webContents.send("kin:toast", `🔊 Speaking live briefing…`);
     }
-    speakCharacterLine(voice, spoken, personaMeta.instructions);
+    speakCharacterLine(spoken, personaMeta.instructions);
     return;
   }
   if (kind === "new-chat") {
     const s = pollKinDb()?.settings || {};
-    const voice = s.avatar_voice || "sage";
     const personaMeta = AVATAR_VOICES[s.avatar_id] || {};
     setKinSetting("pending_nav", "/");
     if (win && !win.isDestroyed()) {
       win.webContents.send("kin:toast", "💬 Opening Hermes chat…");
     }
     focusHermesWindow();
-    speakCharacterLine(voice, "Hermes chat ready.", personaMeta.instructions);
+    speakCharacterLine("Hermes chat ready.", personaMeta.instructions);
     return;
   }
 });

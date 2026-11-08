@@ -1,7 +1,14 @@
-"""Local routes for the Kin desktop half. No outbound network."""
+"""Local routes for the Kin desktop half.
+
+No outbound network of its own. Spoken lines go through Hermes's own
+``text_to_speech`` tool (the published ``tools.registry`` API): Hermes picks
+the provider and holds its key, and Kin only gets back an audio file path.
+"""
 
 from __future__ import annotations
 
+import asyncio
+import json
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -26,6 +33,29 @@ def _mem():
     if _memory is None:
         _memory = _load_memory_class()()
     return _memory
+
+
+def _synthesize(req):
+    """Speak one line through Hermes's text_to_speech tool; store the result for the overlay."""
+    result = {"id": str(req.get("id") or ""), "path": "", "error": ""}
+    try:
+        from tools.registry import discover_builtin_tools, registry
+
+        if registry.get_entry("text_to_speech") is None:
+            discover_builtin_tools()
+        args = {"text": str(req.get("text") or "")[:600]}
+        instructions = str(req.get("instructions") or "").strip()
+        if instructions:
+            args["instructions"] = instructions[:300]
+        raw = registry.dispatch("text_to_speech", args)
+        data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+        if data.get("success") and data.get("file_path"):
+            result["path"] = str(data["file_path"])
+        else:
+            result["error"] = str(data.get("error") or "speech failed")[:200]
+    except Exception as exc:
+        result["error"] = type(exc).__name__
+    _mem().update_settings({"speech_ready": json.dumps(result)})
 
 
 def _emit(event, payload):
@@ -72,7 +102,10 @@ async def get_outbox():
     draft = s.get("pending_draft") or ""
     voice_cmd = s.get("pending_voice_cmd") or ""
     nav = s.get("pending_nav") or ""
+    speech = s.get("pending_speech") or ""
     updates = {}
+    if speech:
+        updates["pending_speech"] = ""
     if prompt:
         updates["pending_prompt"] = ""
     if draft:
@@ -83,6 +116,15 @@ async def get_outbox():
         updates["pending_nav"] = ""
     if updates:
         _mem().update_settings(updates)
+    if speech:
+        # The overlay asked for a spoken line. Synthesis takes seconds, so it
+        # runs off the event loop; the overlay picks up `speech_ready`.
+        try:
+            req = json.loads(speech)
+        except ValueError:
+            req = None
+        if isinstance(req, dict) and str(req.get("text") or "").strip():
+            asyncio.get_running_loop().run_in_executor(None, _synthesize, req)
     return {"prompt": prompt, "draft": draft, "voice_cmd": voice_cmd, "nav": nav}
 
 
