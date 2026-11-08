@@ -501,6 +501,12 @@
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.7);
     max-height: 330px;
     overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #char-picker::-webkit-scrollbar {
+    display: none;
   }
 
   #char-picker.open {
