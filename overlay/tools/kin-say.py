@@ -32,6 +32,7 @@ CHARACTERS = {
     "ollie": {"voice": "ash", "instructions": "Jolly octopus ship captain: hearty, playful.", "greet": "Captain Ollie. All tasks on deck."},
     "barley": {"voice": "ballad", "instructions": "Calm bear: slow, warm, steady.", "greet": "Barley here. Coffee's on. Take your time."},
     "mochi": {"voice": "shimmer", "instructions": "Sleepy soft creature: gentle, hushed, soothing.", "greet": "Mochi's on watch. Rest easy."},
+    "moss": {"voice": "onyx", "instructions": "Laid-back sloth: slow, mellow, unbothered, a little amused.", "greet": "Moss here. No rush. We'll get there."},
 }
 
 PORTRAIT_DIR = os.path.join(os.path.dirname(__file__), "..", "avatars", "persona-art")
