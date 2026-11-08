@@ -5,8 +5,13 @@
 // idle float. Pure DOM — no 3D, no WebGL, works the same on every platform.
 
 const PDIR = "./avatars/persona-art/";
-const PORTRAIT_IDS = ["kin", "elena", "vance", "kael", "sera", "freya"];
-const portraitSrc = (id, kind) => `${PDIR}${id}${kind ? `-${kind}` : ""}.png`;
+// The cartoon personas are 2D only: their art lives in its own folder, apart
+// from persona-art/ (the 3D busts' picker renders).
+const TOON_DIR = "./avatars/toons/";
+const TOON_IDS = ["zip", "juno", "sprout", "ollie", "barley", "mochi"];
+const PORTRAIT_IDS = ["kin", "elena", "vance", "kael", "sera", "freya", ...TOON_IDS];
+const portraitSrc = (id, kind) =>
+  `${TOON_IDS.includes(id) ? TOON_DIR : PDIR}${id}${kind ? `-${kind}` : ""}.png`;
 
 const MOOD_POSE = {
   idle: "",
@@ -110,15 +115,22 @@ export function mount2D(stageEl) {
     // motion-only animation — never a broken-image flash.
     haveBlink = false;
     haveMouth = false;
-    imgBlink = mkLayer("blink", "opacity:0;transition:opacity 90ms linear");
-    imgMouth = mkLayer("mouth", "opacity:0;transition:opacity 70ms linear");
-    imgBlink.onerror = () => { imgBlink.style.display = "none"; };
-    imgBlink.onload = () => { haveBlink = true; };
-    imgMouth.onerror = () => { imgMouth.style.display = "none"; };
-    imgMouth.onload = () => { haveMouth = true; };
+    imgBlink = null;
+    imgMouth = null;
     breathe.appendChild(imgBase);
-    breathe.appendChild(imgBlink);
-    breathe.appendChild(imgMouth);
+    // The cartoon set ships base art only, so skip requests that would 404.
+    if (!TOON_IDS.includes(charId)) {
+      const blink = mkLayer("blink", "opacity:0;transition:opacity 90ms linear");
+      const mouth = mkLayer("mouth", "opacity:0;transition:opacity 70ms linear");
+      blink.onerror = () => { blink.style.display = "none"; };
+      blink.onload = () => { haveBlink = true; };
+      mouth.onerror = () => { mouth.style.display = "none"; };
+      mouth.onload = () => { haveMouth = true; };
+      imgBlink = blink;
+      imgMouth = mouth;
+      breathe.appendChild(blink);
+      breathe.appendChild(mouth);
+    }
     wrap.appendChild(breathe);
     size.appendChild(wrap);
     holder.appendChild(size);
@@ -174,4 +186,4 @@ export function mount2D(stageEl) {
   return { setCharacter, setMood, setGaze, setSpeech, setStreaming, destroy };
 }
 
-export { PORTRAIT_IDS, portraitSrc };
+export { PORTRAIT_IDS, TOON_IDS, portraitSrc };

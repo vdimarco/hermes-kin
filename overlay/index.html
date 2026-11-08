@@ -647,7 +647,15 @@ const PERSONAS = [
   { id: "kael", label: "Kael", url: "./avatars/kael.glb" },
   { id: "sera", label: "Sera", url: "./avatars/sera.glb" },
   { id: "freya", label: "Freya", url: "./avatars/freya.glb" },
+  // Cartoon personas: 2D portraits (kin-2d.js), no 3D model.
+  { id: "zip", label: "Zip", kind: "2d" },
+  { id: "juno", label: "Juno", kind: "2d" },
+  { id: "sprout", label: "Sprout", kind: "2d" },
+  { id: "ollie", label: "Ollie", kind: "2d" },
+  { id: "barley", label: "Barley", kind: "2d" },
+  { id: "mochi", label: "Mochi", kind: "2d" },
 ];
+const is2D = (p) => p?.kind === "2d";
 
 const GLB_ICON = `<svg viewBox="50 22 100 130" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="92" r="56" fill="#2c3550" stroke="#171720" stroke-width="3.5"/><ellipse cx="78" cy="95" rx="13" ry="15" fill="#fff"/><ellipse cx="122" cy="95" rx="13" ry="15" fill="#fff"/><circle cx="78" cy="95" r="5" fill="#8b92a0"/><circle cx="122" cy="95" r="5" fill="#8b92a0"/><path d="M64 62 Q64 34 100 32 Q136 34 136 62" fill="none" stroke="#4a5468" stroke-width="7"/></svg>`;
 
@@ -684,28 +692,57 @@ mountAvatar({
 }).then((handle) => {
   avatar = handle;
   avatar.setMood(currentMood);
+  // A 2D persona restored before the 3D engine finished loading: the engine
+  // just made its canvas visible, so hide it again and remember its choice.
+  if (mode2d) {
+    savedCanvasDisplay = [glCanvas.style.display, flatCanvas.style.display];
+    glCanvas.style.display = "none";
+    flatCanvas.style.display = "none";
+  }
   setTimeout(() => {
     preloadAvatars(PERSONAS.filter((p) => p.url).map((p) => p.url));
   }, 300);
 });
 
-// Flat cartoon caricature engine (celebrities) — mounted over the same stage.
+// 2D portrait engine for the cartoon personas — mounted over the same stage.
 const avatar2d = mount2D(stage);
 let mode2d = false;
+let savedCanvasDisplay = null;
 
 function setMode2D(on) {
+  if (on === mode2d) return;
   mode2d = on;
-  glCanvas.style.display = on ? "none" : "";
-  flatCanvas.style.display = on ? "none" : "";
+  if (on) {
+    // Remember what the 3D engine chose (bust or flat fallback). The
+    // stylesheet hides every canvas, so clearing the inline display on the
+    // way back would leave the 3D avatar invisible.
+    savedCanvasDisplay = [glCanvas.style.display, flatCanvas.style.display];
+    glCanvas.style.display = "none";
+    flatCanvas.style.display = "none";
+  } else if (savedCanvasDisplay) {
+    [glCanvas.style.display, flatCanvas.style.display] = savedCanvasDisplay;
+  }
   const holder = document.getElementById("k2d-holder");
   if (holder) holder.style.display = on ? "flex" : "none";
 }
 
-async function selectPersona(next) {
-  loadedAvatarId = next.id;
+// Show a persona on the stage: 2D portrait or 3D bust.
+async function showPersona(p) {
+  loadedAvatarId = p.id;
   personaBtn.textContent = "Avatar ▾";
-  personaBtn.title = `Avatar — ${next.label}`;
-  await avatar?.setAvatar?.(next.url);
+  personaBtn.title = `Avatar — ${p.label}`;
+  if (is2D(p)) {
+    avatar2d.setCharacter(p.id);
+    avatar2d.setMood(currentMood);
+    setMode2D(true);
+  } else {
+    setMode2D(false);
+    await avatar?.setAvatar?.(p.url);
+  }
+}
+
+async function selectPersona(next) {
+  await showPersona(next);
   window.kinFloat?.act?.({ kind: "set-avatar", avatarId: next.id, label: next.label });
   document.getElementById("char-picker").classList.remove("open");
 }
@@ -718,7 +755,8 @@ PERSONAS.forEach((p) => {
   b.dataset.id = p.id;
   b.type = "button";
   b.title = p.label;
-  const face = `<img class="chip-face-img" src="./avatars/persona-art/${p.id}.png" alt="${p.label}" draggable="false">`;
+  const faceSrc = is2D(p) ? `./avatars/toons/${p.id}.png` : `./avatars/persona-art/${p.id}.png`;
+  const face = `<img class="chip-face-img" src="${faceSrc}" alt="${p.label}" draggable="false">`;
   b.innerHTML = `<span class="chip-face">${face}</span><span class="chip-label">${p.label}</span>`;
   b.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -1135,16 +1173,12 @@ window.kinFloat?.onState?.((state) => {
   if (!micEnabled) root.classList.remove("mic-speaking");
   if (avatarId && avatarId !== loadedAvatarId) {
     const found = PERSONAS.find((p) => p.id === avatarId);
-    if (found) {
-      loadedAvatarId = found.id;
-      personaBtn.textContent = "Avatar ▾";
-      personaBtn.title = `Avatar — ${found.label}`;
-      avatar?.setAvatar?.(found.url);
-    }
+    if (found) showPersona(found);
   }
-  if (avatar && mood && mood !== currentMood) {
+  if (mood && mood !== currentMood) {
+    // The 3D mount callback applies currentMood once it loads.
     currentMood = mood;
-    avatar.setMood(mood);
+    avatar?.setMood(mood);
     avatar2d.setMood(mood);
   }
   if (Date.now() > toastUntil) {
