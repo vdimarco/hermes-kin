@@ -1,0 +1,6 @@
+[project]
+name = "kin"
+version = "0.2.0"
+description = "A calm companion for Hermes Desktop."
+requires-python = ">=3.11"
+dependencies = []

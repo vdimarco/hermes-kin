@@ -1,0 +1,6 @@
+Kin's head lives in assets/kin-bust.glb.
+The build copies it to desktop/kin-bust.glb. The pane fetches that file from beside plugin.js.
+If the fetch fails, plugin.js uses an inlined copy of the same file.
+It is an anime woman with a black bob, a pale headband, and teal eyes.
+The pane shows only the head. The neck dissolves just under the jaw, so the collar and coat do not show.
+It is not the Hermes logo.
