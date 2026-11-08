@@ -582,6 +582,7 @@ function createWindow() {
   // 3. Poll Kin SQLite state + tasks + voice state
   let transientMoodUntil = 0;
   let transientMood = null;
+  let lastSpokenSayRaw = "";
   setInterval(() => {
     if (!win || win.isDestroyed()) return;
     const state = pollKinDb();
@@ -592,6 +593,27 @@ function createWindow() {
     const asleep = ["1", "true", "yes", "on"].includes(String(settings.sleep || "").toLowerCase());
     const voiceActive =
       voiceActiveLocal || ["1", "true", "yes", "on"].includes(String(settings.voice_active || "").toLowerCase());
+
+    // Persona voice replies: the plugin queues pending_say after each chat
+    // turn; speak it in the current persona's voice (lip-sync included) and
+    // clear the queue. Fresh timestamps only — a stale line from a restart
+    // never plays, and the mic/gpt-live path keeps its own audio.
+    try {
+      const rawSay = String(settings.pending_say || "").trim();
+      if (rawSay && rawSay !== lastSpokenSayRaw) {
+        lastSpokenSayRaw = rawSay;
+        const parsed = JSON.parse(rawSay);
+        const fresh = Number(parsed?.ts) > Date.now() / 1000 - 180;
+        const text = String(parsed?.text || "").trim();
+        if (fresh && text && !asleep && !voiceActive) {
+          const meta = AVATAR_VOICES[settings.avatar_id] || AVATAR_VOICES.kin;
+          speakCharacterLine(meta.voice, text, meta.instructions);
+        }
+        setKinSetting("pending_say", "");
+      } else if (!rawSay) {
+        lastSpokenSayRaw = "";
+      }
+    } catch {}
 
     let mood = "idle";
     let line = `Watching ${lastActiveDesktopWin.class || "Desktop"}`;
@@ -760,7 +782,7 @@ function transcribeUtteranceBuffer(pcmBuffer) {
       "res = transcribe_recording(sys.argv[1])",
       'print("KIN_STT_JSON:" + json.dumps(res))',
     ].join("; ");
-    execFile("python3", ["-c", pyCode, wavPath], { timeout: 25000 }, (err, stdout) => {
+    execFile(kinPython(), ["-c", pyCode, wavPath], { timeout: 25000 }, (err, stdout) => {
       const out = String(stdout || "");
       const m = out.match(/KIN_STT_JSON:(\{.*\})/);
       let parsed = null;
@@ -876,15 +898,19 @@ const AVATAR_VOICES = {
   kael: { voice: "onyx", role: "Sunmane Commander", greet: "Commander Kael here. Ready for orders." },
   vance: { voice: "echo", role: "Spec-Ops AI", greet: "Vance on comms. Tactical feed active." },
   elena: { voice: "sage", role: "Arcane Archivist", greet: "Elena here. Archives and logs are open." },
-  // Cartoon personas (2D portraits).
-  zip: { voice: "verse", role: "Systems Sidekick", greet: "Zip online. Your builds are in good hands.", instructions: "Cheerful little robot sidekick: bright, quick, upbeat." },
-  juno: { voice: "alloy", role: "Focus Coach", greet: "Juno here. Let's get you unstuck.", instructions: "Confident focus coach: warm, direct, encouraging." },
-  sprout: { voice: "fable", role: "Curious Helper", greet: "Sprout's awake! What are we building?", instructions: "Excited baby dragon: curious, bouncy, eager." },
-  ollie: { voice: "ash", role: "Captain of the Queue", greet: "Captain Ollie. All tasks on deck.", instructions: "Jolly octopus ship captain: hearty, playful." },
-  barley: { voice: "ballad", role: "Calm Keeper", greet: "Barley here. Coffee's on. Take your time.", instructions: "Calm bear: slow, warm, steady." },
-  mochi: { voice: "shimmer", role: "Quiet-Hours Guard", greet: "Mochi's on watch. Rest easy.", instructions: "Sleepy soft creature: gentle, hushed, soothing." },
-  moss: { voice: "onyx", role: "Chill Navigator", greet: "Moss here. No rush. We'll get there.", instructions: "Laid-back sloth: slow, mellow, unbothered, a little amused." },
 };
+
+
+// Resolve a python that can import Hermes deps (ruamel etc.): the agent
+// venv first, then KIN_PYTHON, then bare python3. A bare system python3
+// often lacks Hermes's deps and silently kills TTS.
+const fsMod = require("fs");
+function kinPython() {
+  if (process.env.KIN_PYTHON && fsMod.existsSync(process.env.KIN_PYTHON)) return process.env.KIN_PYTHON;
+  const venv = require("path").join(process.env.HOME || "", ".hermes", "hermes-agent", "venv", "bin", "python3");
+  if (fsMod.existsSync(venv)) return venv;
+  return "python3";
+}
 
 function speakCharacterLine(voice, text, instructions) {
   const py = [
@@ -899,7 +925,7 @@ function speakCharacterLine(voice, text, instructions) {
     "open(mp3, 'wb').write(urllib.request.urlopen(req, timeout=25).read())",
     "print(mp3)",
   ].join("; ");
-  execFile("python3", ["-c", py, voice, text, instructions || ""], { timeout: 35000 }, (err, stdout, stderr) => {
+  execFile(kinPython(), ["-c", py, voice, text, instructions || ""], { timeout: 35000 }, (err, stdout, stderr) => {
     if (err) console.error("[tts] execFile error:", String(err && err.message).slice(0, 300));
     if (stderr) console.error("[tts] stderr:", String(stderr).slice(0, 300));
     const out = String(stdout || "");
