@@ -4,7 +4,7 @@ Kin is a companion for [Hermes Desktop](https://hermes-agent.nousresearch.com/do
 
 Kin also ships with an optional **floating overlay** (`overlay/`) — a frameless, always-on-top Electron HUD for Omarchy/Hyprland. The same character hovers over your desktop, tracks your real cursor with her eyes, shows what Hermes is doing in plain English, and lets you talk to Hermes by voice. Strictly opt-in.
 
-![Kin overlay task drawer](docs/overlay-sections.png)
+![Kin overlay — a persona floats over your desktop](docs/overlay-float.png)
 
 ## What it does
 

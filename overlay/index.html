@@ -546,7 +546,7 @@
     pointer-events: none;
   }
 
-  .chip .chip-face svg {
+  .chip .chip-face svg, .chip .chip-face .chip-face-img {
     width: 100%;
     height: 100%;
   }
@@ -631,6 +631,7 @@
 
 <script type="module">
 import { mountAvatar, preloadAvatars } from "./kin-avatar.js";
+import { mount2D, portraitSrc } from "./kin-2d.js";
 
 const PERSONAS = [
   { id: "kin", label: "Kin", url: "kin" },
@@ -639,6 +640,17 @@ const PERSONAS = [
   { id: "kael", label: "Kael", url: "./avatars/kael.glb" },
   { id: "sera", label: "Sera", url: "./avatars/sera.glb" },
   { id: "freya", label: "Freya", url: "./avatars/freya.glb" },
+  { id: "trump", label: "Donald", mode: "2d" },
+  { id: "kim", label: "Kim K", mode: "2d" },
+  { id: "kanye", label: "Kanye", mode: "2d" },
+  { id: "goku", label: "Goku", mode: "2d" },
+  { id: "vegeta", label: "Vegeta", mode: "2d" },
+  { id: "luffy", label: "Luffy", mode: "2d" },
+  { id: "dalai", label: "Dalai Lama", mode: "2d" },
+  { id: "spongebob", label: "SpongeBob", mode: "2d" },
+  { id: "pikachu", label: "Pikachu", mode: "2d" },
+  { id: "homer", label: "Homer", mode: "2d" },
+  { id: "snoop", label: "Snoop", mode: "2d" },
 ];
 
 const GLB_ICON = `<svg viewBox="50 22 100 130" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="92" r="56" fill="#2c3550" stroke="#171720" stroke-width="3.5"/><ellipse cx="78" cy="95" rx="13" ry="15" fill="#fff"/><ellipse cx="122" cy="95" rx="13" ry="15" fill="#fff"/><circle cx="78" cy="95" r="5" fill="#8b92a0"/><circle cx="122" cy="95" r="5" fill="#8b92a0"/><path d="M64 62 Q64 34 100 32 Q136 34 136 62" fill="none" stroke="#4a5468" stroke-width="7"/></svg>`;
@@ -680,11 +692,30 @@ mountAvatar({
   }, 300);
 });
 
+// Flat cartoon caricature engine (celebrities) — mounted over the same stage.
+const avatar2d = mount2D(stage);
+let mode2d = false;
+
+function setMode2D(on) {
+  mode2d = on;
+  glCanvas.style.display = on ? "none" : "";
+  flatCanvas.style.display = on ? "none" : "";
+  const holder = document.getElementById("k2d-holder");
+  if (holder) holder.style.display = on ? "flex" : "none";
+}
+
 async function selectPersona(next) {
   loadedAvatarId = next.id;
   personaBtn.textContent = "Avatar ▾";
   personaBtn.title = `Avatar — ${next.label}`;
-  await avatar?.setAvatar?.(next.url);
+  if (next.mode === "2d") {
+    avatar2d.setCharacter(next.id);
+    avatar2d.setMood(currentMood);
+    setMode2D(true);
+  } else {
+    setMode2D(false);
+    await avatar?.setAvatar?.(next.url);
+  }
   window.kinFloat?.act?.({ kind: "set-avatar", avatarId: next.id, label: next.label });
   document.getElementById("char-picker").classList.remove("open");
 }
@@ -697,7 +728,9 @@ PERSONAS.forEach((p) => {
   b.dataset.id = p.id;
   b.type = "button";
   b.title = p.label;
-  const face = GLB_ICON;
+  const face = p.mode === "2d"
+    ? `<img class="chip-face-img" src="${portraitSrc(p.id)}" alt="${p.label}" draggable="false">`
+    : GLB_ICON;
   b.innerHTML = `<span class="chip-face">${face}</span><span class="chip-label">${p.label}</span>`;
   b.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -723,6 +756,10 @@ window.kinFloat?.onMic?.(({ active, level, bars, speaking }) => {
   micEnabled = Boolean(active);
   root.classList.toggle("mic-on", micEnabled);
   root.classList.toggle("mic-speaking", Boolean(micEnabled && speaking));
+  if (micEnabled && mode2d) {
+    avatar2d.setMood("attentive");
+    avatar2d.setSpeech(0, false);
+  }
   if (micEnabled) {
     eqBars.forEach((bar, idx) => {
       const bVal = Array.isArray(bars) ? Number(bars[idx] || 0) : Number(level || 0);
@@ -756,6 +793,7 @@ window.kinFloat?.onSpeak?.(({ mp3 }) => {
     let raf = 0;
     const loop = () => {
       if (el.paused || el.ended) {
+        avatar2d.setSpeech(0, false);
         speakingNow = false;
         root.classList.remove("char-speaking");
         return;
@@ -764,6 +802,7 @@ window.kinFloat?.onSpeak?.(({ mp3 }) => {
       let sum = 0;
       for (let i = 0; i < 48; i++) sum += data[i];
       const lvl = Math.min(1, (sum / 48) / 80);
+      avatar2d.setSpeech(lvl * 1.5, true);
       raf = requestAnimationFrame(loop);
     };
     el.addEventListener("playing", () => {
@@ -774,6 +813,7 @@ window.kinFloat?.onSpeak?.(({ mp3 }) => {
       raf = requestAnimationFrame(loop);
     });
     el.addEventListener("ended", () => {
+      avatar2d.setSpeech(0, false);
       speakingNow = false;
       root.classList.remove("char-speaking");
     });
@@ -941,7 +981,6 @@ function micUI(active, _status, level = 0, bars = [0, 0, 0, 0], speaking = false
   }
 }
 
-
 // Avatar pill: left-click opens the persona picker (right-click works too)
 personaBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -961,6 +1000,7 @@ drawerToggle.addEventListener("click", (e) => {
 
 window.kinFloat?.onGaze?.(({ dx, dy }) => {
   avatar?.setGaze(dx, dy);
+  avatar2d.setGaze(dx, dy);
 });
 
 let toastHistory = [];
@@ -1111,12 +1151,20 @@ window.kinFloat?.onState?.((state) => {
       loadedAvatarId = found.id;
       personaBtn.textContent = "Avatar ▾";
       personaBtn.title = `Avatar — ${found.label}`;
-      avatar?.setAvatar?.(found.url);
+      if (found.mode === "2d") {
+        avatar2d.setCharacter(found.id);
+        avatar2d.setMood(currentMood);
+        setMode2D(true);
+      } else {
+        setMode2D(false);
+        avatar?.setAvatar?.(found.url);
+      }
     }
   }
   if (avatar && mood && mood !== currentMood) {
     currentMood = mood;
     avatar.setMood(mood);
+    avatar2d.setMood(mood);
   }
   if (Date.now() > toastUntil) {
     const cleanLine = (line || "").replace(/^[^\w\s]+\s*/, "");
