@@ -1,0 +1,67 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1440px;height:900px;overflow:hidden;background:#0b0d17}
+  .stage{position:relative;width:1440px;height:900px;padding:52px 56px;font-family:Inter,sans-serif;color:#f3efe6;
+    background:
+      radial-gradient(700px 300px at 50% -40px, rgba(255,184,107,.16), transparent 70%),
+      linear-gradient(180deg,#0f1222 0%,#0a0c15 100%)}
+  header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:34px}
+  h2{font-family:Fraunces,serif;font-weight:700;font-size:60px;letter-spacing:-.03em;line-height:1}
+  h2 em{font-style:italic;font-weight:500;color:#ffc98f}
+  header p{font-size:16px;line-height:1.5;color:#a9adbf;width:400px;text-align:right}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+  .card{--a:#ffb86b;position:relative;height:690px;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.09)}
+  .face{position:relative;height:490px;overflow:hidden;
+    background:radial-gradient(240px 260px at 50% 40%, color-mix(in srgb,var(--a) 34%,transparent), transparent 72%)}
+  .face img{position:absolute;left:50%;top:18px;height:620px;transform:translateX(-50%);
+    -webkit-mask-image:linear-gradient(180deg,#000 62%,transparent 76%)}
+  .body{position:relative;flex:1;padding:4px 18px 20px;display:flex;flex-direction:column}
+  .role{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--a)}
+  .name{font-family:Fraunces,serif;font-weight:600;font-size:36px;letter-spacing:-.02em;margin-top:6px;line-height:1}
+  .greet{font-family:Fraunces,serif;font-style:italic;font-weight:500;font-size:16.5px;line-height:1.35;color:#ebe5d8;margin-top:12px}
+  .chip{margin-top:auto;align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:11px;color:#c9ccd9;padding:5px 9px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+  .chip b{color:var(--a);font-weight:500}
+  .default{position:absolute;top:14px;left:14px;z-index:2;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#0b0d17;background:var(--a);padding:4px 9px;border-radius:999px}
+</style></head>
+<body><div class="stage">
+  <header>
+    <h2>Pick your <em>avatar.</em></h2>
+    <p>Six original cartoon characters, each with a voice of their own. Click the Avatar pill to switch.</p>
+  </header>
+  <div class="grid">
+    <div class="card" style="--a:#ffb86b"><span class="default">Default</span>
+      <div class="face"><img src="art/kin.png"></div>
+      <div class="body"><div class="role">Companion</div><div class="name">Kin</div>
+        <div class="greet">“Kin online. Watching your desktop.”</div>
+        <span class="chip">voice <b>shimmer</b></span></div></div>
+    <div class="card" style="--a:#76d69a">
+      <div class="face"><img src="art/elena.png"></div>
+      <div class="body"><div class="role">Arcane archivist</div><div class="name">Elena</div>
+        <div class="greet">“Elena here. Archives and logs are open.”</div>
+        <span class="chip">voice <b>sage</b></span></div></div>
+    <div class="card" style="--a:#5fd4ff">
+      <div class="face"><img src="art/vance.png"></div>
+      <div class="body"><div class="role">Spec-ops operator</div><div class="name">Vance</div>
+        <div class="greet">“Vance on comms. Tactical feed active.”</div>
+        <span class="chip">voice <b>echo</b></span></div></div>
+    <div class="card" style="--a:#ffd05a">
+      <div class="face"><img src="art/kael.png"></div>
+      <div class="body"><div class="role">Battle commander</div><div class="name">Kael</div>
+        <div class="greet">“Commander Kael here. Ready for orders.”</div>
+        <span class="chip">voice <b>onyx</b></span></div></div>
+    <div class="card" style="--a:#bf94ff">
+      <div class="face"><img src="art/sera.png"></div>
+      <div class="body"><div class="role">Neural architect</div><div class="name">Sera</div>
+        <div class="greet">“Sera linked. Neural telemetry online.”</div>
+        <span class="chip">voice <b>coral</b></span></div></div>
+    <div class="card" style="--a:#a9cbff">
+      <div class="face"><img src="art/freya.png"></div>
+      <div class="body"><div class="role">Northern valkyrie</div><div class="name">Freya</div>
+        <div class="greet">“Freya standing by. Your shield is up.”</div>
+        <span class="chip">voice <b>nova</b></span></div></div>
+  </div>
+</div></body></html>

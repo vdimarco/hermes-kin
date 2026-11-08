@@ -1,10 +1,14 @@
-# Kin
+# Avatar
 
-Kin is a companion for [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop) who actually pays attention. She watches what you're working on, knows when something is stuck, late, or waiting, and is there the moment you need her — no judgment, no small talk, never leaves you on read.
+![Avatar: six cartoon companions for Hermes Desktop](docs/banner.png)
 
-Kin also ships with an optional **floating overlay** (`overlay/`) — a frameless, always-on-top Electron HUD for Omarchy/Hyprland. The same character hovers over your desktop, tracks your real cursor with her eyes, shows what Hermes is doing in plain English, and lets you talk to Hermes by voice. Strictly opt-in.
+Avatar (plugin name `kin`) puts a cartoon companion in [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop). Your avatar watches your sessions. It tells you when a task is stuck, done, or waiting on you. It writes drafts and never sends for you.
 
-![Kin overlay — a persona floats over your desktop](docs/overlay-float.png)
+Pick one of six original characters. Each one has a 3D bust and a voice of their own.
+
+![Pick your avatar: Kin, Elena, Vance, Kael, Sera, and Freya](docs/cast.png)
+
+An optional **floating overlay** (`overlay/`) puts your avatar on top of your desktop. Its eyes follow your cursor. A task drawer shows what Hermes is doing in plain English, and you can talk to Hermes by voice. The overlay is strictly opt-in.
 
 ## What it does
 
@@ -117,7 +121,7 @@ desktop/kin-bust.glb   the bust, loaded beside the bundle
 assets/kin-bust.glb    source copy of the bust
 assets/MODEL.txt       what the bust is, and what it is not
 overlay/               the optional floating HUD (Electron app)
-docs/                  real screenshots
+docs/                  banner, cast sheet, and their HTML sources (promo-src/)
 DEMO.md                the 90-second demo script
 ```
 
