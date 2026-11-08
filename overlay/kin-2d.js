@@ -83,7 +83,7 @@ export function mount2D(stageEl) {
     const size = document.createElement("div");
     // Motion-safe frame: every animation (breathe, gaze, talk-bob, mood
     // scale) must stay INSIDE the stage, or the head clips at the edge.
-    size.style.cssText = "position:absolute;inset:14px";
+    size.style.cssText = "position:absolute;inset:14px 14px 34px 14px";
     wrap = document.createElement("div");
     wrap.style.cssText =
       "position:absolute;inset:0;will-change:transform;transition:transform 0.3s cubic-bezier(.2,.8,.2,1)";
