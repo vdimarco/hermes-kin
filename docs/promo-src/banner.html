@@ -2,82 +2,81 @@
 <html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
-  :root{--ink:#0b0d17;--ink2:#141828;--text:#f3efe6;--muted:#a9adbf;--warm:#ffb86b;--teal:#5fe3d0;}
+  :root{--text:#f3efe6;--muted:#a9adbf;--warm:#ffb86b;--teal:#5fe3d0}
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:1200px;height:600px;overflow:hidden;background:var(--ink)}
-  .stage{position:relative;width:1200px;height:600px;overflow:hidden;
+  html,body{width:1200px;height:600px;overflow:hidden;background:#0b0d17}
+  .stage{position:relative;width:1200px;height:600px;overflow:hidden;font-family:Inter,sans-serif;color:var(--text);
     background:
-      radial-gradient(520px 380px at 830px 330px, rgba(255,184,107,.22), transparent 70%),
-      radial-gradient(420px 300px at 1080px 160px, rgba(95,227,208,.13), transparent 70%),
-      radial-gradient(500px 340px at 560px 520px, rgba(140,120,255,.14), transparent 70%),
-      linear-gradient(180deg,#0e1120 0%, #0a0c15 100%);
-    font-family:Inter,sans-serif;color:var(--text)}
-  .dots{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.2px);background-size:22px 22px;
-    -webkit-mask-image:radial-gradient(600px 420px at 820px 300px,#000 20%,transparent 75%);}
-  .floor{position:absolute;left:380px;right:0;bottom:0;height:120px;
-    background:radial-gradient(420px 80px at 50% 100%, rgba(255,184,107,.20), transparent 70%)}
+      radial-gradient(460px 340px at 830px 300px, rgba(255,184,107,.20), transparent 70%),
+      radial-gradient(380px 280px at 1090px 200px, rgba(95,227,208,.12), transparent 70%),
+      radial-gradient(420px 300px at 560px 420px, rgba(140,120,255,.14), transparent 70%),
+      linear-gradient(180deg,#0e1120 0%,#0a0c15 100%)}
+  .dots{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px);background-size:22px 22px;
+    -webkit-mask-image:radial-gradient(600px 420px at 820px 300px,#000 20%,transparent 75%)}
 
-  /* copy */
   .copy{position:absolute;left:60px;top:66px;width:380px;z-index:20}
   .tag{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
     color:var(--muted);padding:7px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.03)}
   .tag i{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal)}
   h1{font-family:Fraunces,serif;font-weight:700;font-size:116px;line-height:.92;letter-spacing:-.035em;margin-top:22px;
-    background:linear-gradient(180deg,#fff7ea 30%, #ffc98f 100%);-webkit-background-clip:text;color:transparent}
-  .lede{font-family:Fraunces,serif;font-style:italic;font-weight:500;font-size:27px;line-height:1.2;margin-top:16px;color:#f6efe3;letter-spacing:-.01em}
+    background:linear-gradient(180deg,#fff7ea 30%,#ffc98f 100%);-webkit-background-clip:text;color:transparent}
+  .lede{font-family:Fraunces,serif;font-style:italic;font-weight:500;font-size:27px;line-height:1.2;margin-top:16px;color:#f6efe3}
   .sub{font-size:15.5px;line-height:1.5;color:var(--muted);margin-top:16px;width:350px}
   .cmd{position:absolute;left:60px;bottom:58px;z-index:20;font-family:"JetBrains Mono",monospace;font-size:14px;color:#e9e4d8;
     padding:11px 16px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10)}
   .cmd b{color:var(--warm);font-weight:500}
 
-  /* lineup */
-  .p{position:absolute;bottom:0;transform:translateX(-50%);
-    -webkit-mask-image:linear-gradient(180deg,#000 72%,transparent 99%)}
-  .p img{display:block;height:100%;width:auto}
-  .back img{filter:brightness(.72) saturate(.9)}
-  .mid img{filter:brightness(.86)}
-  .edge{-webkit-mask-image:linear-gradient(180deg,#000 72%,transparent 99%),linear-gradient(90deg,transparent 0,#000 9%,#000 91%,transparent 100%);-webkit-mask-composite:source-in;mask-composite:intersect}
-  .halo{position:absolute;left:888px;top:140px;width:460px;height:460px;transform:translateX(-50%);border-radius:50%;z-index:4;
-    background:radial-gradient(closest-side, rgba(255,184,107,.30), rgba(255,184,107,.08) 60%, transparent)}
+  /* floating busts */
+  .b{position:absolute;transform:translateX(-50%)}
+  .b img{display:block;height:100%;width:auto;-webkit-mask-image:linear-gradient(180deg,#000 80%,transparent 100%)}
+  .b::after{content:"";position:absolute;left:50%;bottom:-14px;width:70%;height:22px;transform:translateX(-50%);border-radius:50%;
+    background:radial-gradient(closest-side,rgba(255,200,140,.28),transparent)}
+  .back img{filter:brightness(.78) saturate(.92)}
+  .halo{position:absolute;left:846px;top:120px;width:380px;height:380px;transform:translateX(-50%);border-radius:50%;
+    background:radial-gradient(closest-side,rgba(255,184,107,.30),rgba(255,184,107,.07) 60%,transparent)}
 
-  /* speech bubble */
-  .bubble{position:absolute;left:612px;top:22px;z-index:30;width:256px;padding:13px 16px 14px;border-radius:16px 16px 4px 16px;
-    background:rgba(18,21,36,.88);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 40px rgba(0,0,0,.45);backdrop-filter:blur(8px)}
+  .bubble{position:absolute;left:930px;top:34px;z-index:30;width:250px;padding:13px 16px 14px;border-radius:16px 16px 16px 4px;
+    background:rgba(18,21,36,.9);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 40px rgba(0,0,0,.45)}
   .bubble .who{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--warm)}
   .bubble p{font-size:14.5px;line-height:1.42;margin-top:5px;color:#f1ede4}
 
-  /* overlay capsule */
-  .capsule{position:absolute;left:575px;bottom:34px;z-index:30;display:flex;align-items:center;gap:10px;padding:7px 16px 7px 7px;border-radius:999px;
-    background:rgba(12,14,24,.9);border:1px solid rgba(255,255,255,.14);box-shadow:0 14px 40px rgba(0,0,0,.5);backdrop-filter:blur(8px)}
+  .capsule{position:absolute;left:846px;bottom:38px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;
+    padding:7px 16px 7px 7px;border-radius:999px;background:rgba(12,14,24,.92);border:1px solid rgba(255,255,255,.14);box-shadow:0 14px 40px rgba(0,0,0,.5)}
   .mic{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.07)}
   .pill{font-size:13.5px;font-weight:600;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.09)}
-  .status{font-size:13.5px;color:var(--muted)}
+  .status{font-size:13.5px;color:var(--muted);white-space:nowrap}
   .status b{color:var(--teal);font-weight:500}
-  .faces{display:flex;margin-left:6px}
-  .faces span{width:24px;height:24px;border-radius:50%;overflow:hidden;border:2px solid #0c0e18;margin-left:-7px;background:#222}
-  .faces img{width:100%;height:170%;object-fit:cover;object-position:50% 0}
 </style></head>
 <body><div class="stage">
-  <div class="dots"></div><div class="floor"></div>
+  <div class="dots"></div>
 
   <div class="copy">
     <span class="tag"><i></i>Hermes Desktop plugin</span>
     <h1>Avatar</h1>
-    <div class="lede">A cartoon companion<br>for your work.</div>
+    <div class="lede">A 3D companion<br>for your work.</div>
     <div class="sub">Your avatar sees when a task is stuck, done, or waiting on you. Pick from six characters, each with a voice of their own.</div>
   </div>
   <div class="cmd"><b>$</b> hermes plugins install kin</div>
 
-  <div class="p back edge" style="left:548px;height:390px;z-index:1"><img src="art/freya.png"></div>
-  <div class="p mid edge" style="left:655px;height:440px;z-index:2"><img src="art/kael.png"></div>
-  <div class="p mid edge" style="left:765px;height:400px;z-index:3"><img src="art/elena.png"></div>
-  <div class="p mid edge" style="left:1020px;height:440px;z-index:3"><img src="art/sera.png"></div>
-  <div class="p mid edge" style="left:1122px;height:415px;z-index:2"><img src="art/vance.png"></div>
+  <!-- back tier -->
+  <div class="b back" style="left:548px;bottom:156px;height:250px;z-index:1"><img src="busts/freya.png"></div>
+  <div class="b back" style="left:1112px;bottom:156px;height:250px;z-index:1"><img src="busts/vance.png"></div>
+  <!-- middle tier -->
+  <div class="b" style="left:650px;bottom:118px;height:300px;z-index:2"><img src="busts/kael.png"></div>
+  <div class="b" style="left:1022px;bottom:118px;height:300px;z-index:2"><img src="busts/sera.png"></div>
+  <div class="b" style="left:745px;bottom:96px;height:290px;z-index:3"><img src="busts/elena.png"></div>
+  <!-- front -->
   <div class="halo"></div>
-  <div class="p front edge" style="left:888px;height:480px;z-index:5"><img src="art/kin.png"></div>
+  <div class="b" style="left:880px;bottom:92px;height:262px;z-index:5"><img src="busts/kin.png"></div>
 
   <div class="bubble">
     <div class="who">Your avatar</div>
     <p>Welcome back. 4 finished and 1 failed while you were away. One of those needs you.</p>
+  </div>
+
+  <div class="capsule">
+    <span class="mic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#cfd3e2" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path d="M3 3l18 18"/></svg></span>
+    <span class="pill">Avatar ▾</span>
+    <span class="status"><b>●</b> Watching terminal</span>
   </div>
 </div></body></html>

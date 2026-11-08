@@ -1,10 +1,10 @@
 # Avatar
 
-![Avatar: six cartoon companions for Hermes Desktop](docs/banner.png)
+![Avatar: six 3D companions for Hermes Desktop](docs/banner.png)
 
-Avatar (plugin name `kin`) puts a cartoon companion in [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop). Your avatar watches your sessions. It tells you when a task is stuck, done, or waiting on you. It writes drafts and never sends for you.
+Avatar (plugin name `kin`) puts a 3D companion in [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop). Your avatar watches your sessions. It tells you when a task is stuck, done, or waiting on you. It writes drafts and never sends for you.
 
-Pick one of six original characters. Each one has a 3D bust and a voice of their own.
+Pick one of six original 3D characters. Each one has a voice of their own.
 
 ![Pick your avatar: Kin, Elena, Vance, Kael, Sera, and Freya](docs/cast.png)
 
@@ -121,7 +121,7 @@ desktop/kin-bust.glb   the bust, loaded beside the bundle
 assets/kin-bust.glb    source copy of the bust
 assets/MODEL.txt       what the bust is, and what it is not
 overlay/               the optional floating HUD (Electron app)
-docs/                  banner, cast sheet, and their HTML sources (promo-src/)
+docs/                  banner, cast sheet, and their sources (promo-src/: HTML, bust renders, render.js)
 DEMO.md                the 90-second demo script
 ```
 

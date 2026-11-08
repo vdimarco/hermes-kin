@@ -17,8 +17,9 @@
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.09)}
   .face{position:relative;height:490px;overflow:hidden;
     background:radial-gradient(240px 260px at 50% 40%, color-mix(in srgb,var(--a) 34%,transparent), transparent 72%)}
-  .face img{position:absolute;left:50%;top:18px;height:620px;transform:translateX(-50%);
-    -webkit-mask-image:linear-gradient(180deg,#000 62%,transparent 76%)}
+  .face img{position:absolute;left:50%;bottom:34px;height:420px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(180deg,#000 82%,transparent 100%)}
+  .face img.wide{height:300px;bottom:70px}
+  .face::after{content:"";position:absolute;left:50%;bottom:22px;width:62%;height:20px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--a) 40%,transparent),transparent)}
   .body{position:relative;flex:1;padding:4px 18px 20px;display:flex;flex-direction:column}
   .role{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--a)}
   .name{font-family:Fraunces,serif;font-weight:600;font-size:36px;letter-spacing:-.02em;margin-top:6px;line-height:1}
@@ -30,36 +31,36 @@
 <body><div class="stage">
   <header>
     <h2>Pick your <em>avatar.</em></h2>
-    <p>Six original cartoon characters, each with a voice of their own. Click the Avatar pill to switch.</p>
+    <p>Six 3D characters, each with a voice of their own. Click the Avatar pill to switch.</p>
   </header>
   <div class="grid">
     <div class="card" style="--a:#ffb86b"><span class="default">Default</span>
-      <div class="face"><img src="art/kin.png"></div>
+      <div class="face"><img class="wide" src="busts/kin.png"></div>
       <div class="body"><div class="role">Companion</div><div class="name">Kin</div>
         <div class="greet">“Kin online. Watching your desktop.”</div>
         <span class="chip">voice <b>shimmer</b></span></div></div>
     <div class="card" style="--a:#76d69a">
-      <div class="face"><img src="art/elena.png"></div>
+      <div class="face"><img src="busts/elena.png"></div>
       <div class="body"><div class="role">Arcane archivist</div><div class="name">Elena</div>
         <div class="greet">“Elena here. Archives and logs are open.”</div>
         <span class="chip">voice <b>sage</b></span></div></div>
     <div class="card" style="--a:#5fd4ff">
-      <div class="face"><img src="art/vance.png"></div>
+      <div class="face"><img src="busts/vance.png"></div>
       <div class="body"><div class="role">Spec-ops operator</div><div class="name">Vance</div>
         <div class="greet">“Vance on comms. Tactical feed active.”</div>
         <span class="chip">voice <b>echo</b></span></div></div>
     <div class="card" style="--a:#ffd05a">
-      <div class="face"><img src="art/kael.png"></div>
+      <div class="face"><img src="busts/kael.png"></div>
       <div class="body"><div class="role">Battle commander</div><div class="name">Kael</div>
         <div class="greet">“Commander Kael here. Ready for orders.”</div>
         <span class="chip">voice <b>onyx</b></span></div></div>
     <div class="card" style="--a:#bf94ff">
-      <div class="face"><img src="art/sera.png"></div>
+      <div class="face"><img src="busts/sera.png"></div>
       <div class="body"><div class="role">Neural architect</div><div class="name">Sera</div>
         <div class="greet">“Sera linked. Neural telemetry online.”</div>
         <span class="chip">voice <b>coral</b></span></div></div>
     <div class="card" style="--a:#a9cbff">
-      <div class="face"><img src="art/freya.png"></div>
+      <div class="face"><img src="busts/freya.png"></div>
       <div class="body"><div class="role">Northern valkyrie</div><div class="name">Freya</div>
         <div class="greet">“Freya standing by. Your shield is up.”</div>
         <span class="chip">voice <b>nova</b></span></div></div>
