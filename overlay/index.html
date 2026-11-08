@@ -527,8 +527,13 @@
 
   .chip.active {
     color: var(--green);
-    border-color: rgba(16, 185, 129, 0.5);
-    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.6);
+    background: rgba(16, 185, 129, 0.12);
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.28);
+  }
+
+  .chip.active .chip-face {
+    filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.55));
   }
 
   .chip .chip-face {
@@ -577,7 +582,7 @@
     </button>
 
     <div id="bar-main" title="Click status to open Hermes">
-      <button id="persona-btn" type="button" title="Click to switch character & voice">Elena</button>
+      <button id="persona-btn" type="button" title="Avatar — click to choose your persona">Avatar ▾</button>
       <span id="pill-text">Listening…</span>
     </div>
 
@@ -677,7 +682,8 @@ mountAvatar({
 
 async function selectPersona(next) {
   loadedAvatarId = next.id;
-  personaBtn.textContent = next.label;
+  personaBtn.textContent = "Avatar ▾";
+  personaBtn.title = `Avatar — ${next.label}`;
   await avatar?.setAvatar?.(next.url);
   window.kinFloat?.act?.({ kind: "set-avatar", avatarId: next.id, label: next.label });
   document.getElementById("char-picker").classList.remove("open");
@@ -785,12 +791,11 @@ micBtn.addEventListener("click", (e) => {
   window.kinFloat?.act?.({ kind: "toggle-mic" });
 });
 
-// Cycle character on persona pill click (right-click for the picker grid)
-personaBtn.addEventListener("click", async (e) => {
+// Avatar pill: left-click opens the persona picker (right-click works too)
+personaBtn.addEventListener("click", (e) => {
   e.stopPropagation();
-  const idx = PERSONAS.findIndex((p) => p.id === loadedAvatarId);
-  const next = PERSONAS[(idx + 1) % PERSONAS.length];
-  await selectPersona(next);
+  markActiveChip();
+  picker.classList.toggle("open");
 });
 
 // Drawer collapse / expand
@@ -953,7 +958,8 @@ window.kinFloat?.onState?.((state) => {
     const found = PERSONAS.find((p) => p.id === avatarId);
     if (found) {
       loadedAvatarId = found.id;
-      personaBtn.textContent = found.label;
+      personaBtn.textContent = "Avatar ▾";
+      personaBtn.title = `Avatar — ${found.label}`;
       avatar?.setAvatar?.(found.url);
     }
   }
