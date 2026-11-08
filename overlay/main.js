@@ -953,14 +953,15 @@ function speakCharacterLine(voice, text, instructions) {
     "from tools.tts_tool_openai import _resolve_openai_audio_client_config",
     "key, base, _ = _resolve_openai_audio_client_config()",
     "voice, text = sys.argv[1], sys.argv[2]",
-    "payload = {'model': 'gpt-4o-mini-tts', 'voice': voice, 'input': text}",
-    "if len(sys.argv) > 3: payload['instructions'] = sys.argv[3]",
+    "payload = {'model': 'gpt-4o-mini-tts', 'voice': voice, 'input': text, 'instructions': (sys.argv[3] if len(sys.argv) > 3 else '')}",
     "req = urllib.request.Request(base.rstrip('/') + '/audio/speech', data=json.dumps(payload).encode(), headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})",
     "mp3 = '/home/von/.hermes/cache/scratch/kin-voice-%s-%d.mp3' % (voice, int(time.time()))",
     "open(mp3, 'wb').write(urllib.request.urlopen(req, timeout=25).read())",
     "print(mp3)",
   ].join("; ");
-  execFile("python3", ["-c", py, voice, text, instructions || ""], { timeout: 35000 }, (err, stdout) => {
+  execFile("python3", ["-c", py, voice, text, instructions || ""], { timeout: 35000 }, (err, stdout, stderr) => {
+    if (err) console.error("[tts] execFile error:", String(err && err.message).slice(0, 300));
+    if (stderr) console.error("[tts] stderr:", String(stderr).slice(0, 300));
     const out = String(stdout || "");
     const mp3 = out.trim().split("\n").pop();
     if (err || !mp3.startsWith("/")) return;

@@ -100,7 +100,7 @@ function mouths({ cx = 100, cy = 136, w = 30, style = "smile" }) {
 }
 
 function neck(skin) {
-  return `<rect x="86" y="148" width="28" height="30" fill="${skin}" stroke="${OUT}" stroke-width="3"/>`;
+  return `<path d="M86 146 Q86 168 90 180 L110 180 Q114 168 114 146 Z" fill="${skin}" stroke="${OUT}" stroke-width="3"/>`;
 }
 
 function shoulders(fill, extra = "") {
@@ -135,7 +135,7 @@ const CHARACTERS = {
           <path d="M128 46 Q142 54 138 66 Q130 60 126 52 Z" fill="#f7dc8a" stroke="${OUT}" stroke-width="3"/>
           <path d="M64 64 Q68 76 78 80" fill="none" stroke="#e5a96a" stroke-width="2.5"/>
           <path d="M100 104 Q104 112 100 116 Q95 112 96 108 Z" fill="#e8a565" stroke="#b0704a" stroke-width="2.5"/>
-          ${brows("flat", "#e5c878", 70)}
+          ${brows("thin", "#d9b25f", 70)}
           <g id="k2d-face">
             ${eyes(skin, { iris: "#3f6fae", eyeRY: 13, pupilRX: 5 })}
             <path id="mouth" d="${m.closed}" fill="${m.closedFill}" stroke="${OUT}" stroke-width="3" stroke-linejoin="round"/>
@@ -162,9 +162,8 @@ const CHARACTERS = {
           <path d="M68 164 Q64 110 70 82 Q74 48 100 46 Q126 48 130 82 Q136 110 132 164 Q120 172 100 172 Q80 172 68 164 Z"
             fill="${skin}" stroke="${OUT}" stroke-width="3.5"/>
           <path d="M84 52 Q100 44 116 52" fill="none" stroke="${OUT}" stroke-width="3.5"/>
-          <path d="M72 60 Q70 80 76 96" fill="none" stroke="#3a2a26" stroke-width="4"/>
-          <path d="M128 60 Q130 80 124 96" fill="none" stroke="#3a2a26" stroke-width="4"/>
-          <ellipse cx="100" cy="30" r="30" cy="26" fill="#2e1f1e" stroke="${OUT}" stroke-width="3.5" style="display:none"/>
+          <path d="M70 58 Q66 76 72 84" fill="none" stroke="#3a2a26" stroke-width="4"/>
+          <path d="M130 58 Q134 76 128 84" fill="none" stroke="#3a2a26" stroke-width="4"/>
           <path d="M66 30 Q100 18 134 30 Q138 40 130 44 Q100 34 70 44 Q62 40 66 30 Z" fill="#2e1f1e"/>
           ${brows("thin", "#3a2a26", 72)}
           <g id="k2d-face">
@@ -279,10 +278,10 @@ const CHARACTERS = {
             <path d="M78 118 Q84 122 90 118 M110 118 Q116 122 122 118" fill="none" stroke="#d99771" stroke-width="2.5"/>
             <path id="mouth" d="${m.closed}" fill="${m.closedFill}" stroke="${OUT}" stroke-width="3" stroke-linejoin="round"/>
           </g>
-          <ellipse cx="100" cy="40" rx="52" ry="16" fill="#e9c74f" stroke="${OUT}" stroke-width="3.5"/>
-          <path d="M48 40 Q100 24 152 40 Q152 52 100 56 Q48 52 48 40 Z" fill="#e9c74f" stroke="${OUT}" stroke-width="3.5"/>
-          <path d="M48 44 Q100 30 152 44 L152 54 Q100 40 48 54 Z" fill="#b8342c"/>
-          <rect x="94" y="42" width="12" height="10" fill="#e9c74f" stroke="${OUT}" stroke-width="2"/>
+          <ellipse cx="100" cy="44" rx="52" ry="16" fill="#e9c74f" stroke="${OUT}" stroke-width="3.5"/>
+          <path d="M48 44 Q100 28 152 44 Q152 56 100 60 Q48 56 48 44 Z" fill="#e9c74f" stroke="${OUT}" stroke-width="3.5"/>
+          <path d="M48 48 Q100 34 152 48 L152 58 Q100 44 48 58 Z" fill="#b8342c"/>
+          <rect x="94" y="46" width="12" height="10" fill="#e9c74f" stroke="${OUT}" stroke-width="2"/>
         </g>`).replace("</svg>", "");
     },
     mouths: mouths({ style: "grin", cy: 134, w: 34 }),
@@ -392,7 +391,7 @@ export function mount2D(stageEl) {
     holder.style.cssText =
       "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none";
     const size = document.createElement("div");
-    size.style.cssText = "width:170px;height:220px;position:relative";
+    size.style.cssText = "width:160px;height:208px;position:relative;margin-top:10px";
     size.innerHTML = `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%">${CHARACTERS[id].build()}</svg>`;
     holder.appendChild(size);
     stageEl.appendChild(holder);

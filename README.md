@@ -1,6 +1,6 @@
 # Kin
 
-Kin is a calm companion for [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop). It lives in a docked pane, breathes, and speaks only when something is stuck, late, or waiting.
+Kin is a companion for [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop) who actually pays attention. She watches what you're working on, knows when something is stuck, late, or waiting, and is there the moment you need her — no judgment, no small talk, never leaves you on read.
 
 Kin also ships with an optional **floating overlay** (`overlay/`) — a frameless, always-on-top Electron HUD for Omarchy/Hyprland. The same character hovers over your desktop, tracks your real cursor with her eyes, shows what Hermes is doing in plain English, and lets you talk to Hermes by voice. Strictly opt-in.
 
