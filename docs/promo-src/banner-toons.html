@@ -1,0 +1,63 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{--text:#f3efe6;--muted:#a9adbf;--warm:#ffb86b;--teal:#5fe3d0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1200px;height:600px;overflow:hidden;background:#0b0d17}
+  .stage{position:relative;width:1200px;height:600px;overflow:hidden;font-family:Inter,sans-serif;color:var(--text);
+    background:
+      radial-gradient(460px 340px at 830px 320px, rgba(255,184,107,.22), transparent 70%),
+      radial-gradient(380px 280px at 1090px 200px, rgba(95,227,208,.14), transparent 70%),
+      radial-gradient(420px 300px at 560px 420px, rgba(190,120,255,.16), transparent 70%),
+      linear-gradient(180deg,#0e1120 0%,#0a0c15 100%)}
+  .dots{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px);background-size:22px 22px;
+    -webkit-mask-image:radial-gradient(600px 420px at 820px 300px,#000 20%,transparent 75%)}
+  .copy{position:absolute;left:60px;top:66px;width:380px;z-index:20}
+  .tag{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);padding:7px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.03)}
+  .tag i{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal)}
+  h1{font-family:Fraunces,serif;font-weight:700;font-size:116px;line-height:.92;letter-spacing:-.035em;margin-top:22px;
+    background:linear-gradient(180deg,#fff7ea 30%,#ffc98f 100%);-webkit-background-clip:text;color:transparent}
+  .lede{font-family:Fraunces,serif;font-style:italic;font-weight:500;font-size:27px;line-height:1.2;margin-top:16px;color:#f6efe3}
+  .sub{font-size:15.5px;line-height:1.5;color:var(--muted);margin-top:16px;width:350px}
+  .cmd{position:absolute;left:60px;bottom:58px;z-index:20;font-family:"JetBrains Mono",monospace;font-size:14px;color:#e9e4d8;
+    padding:11px 16px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10)}
+  .cmd b{color:var(--warm);font-weight:500}
+  .t{position:absolute;bottom:0;transform:translateX(-50%)}
+  .back img{-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent 85%)}
+  .t img{display:block;height:100%;width:auto;-webkit-mask-image:linear-gradient(180deg,#000 74%,transparent 98%)}
+  .back img{filter:brightness(.8) saturate(.95)}
+  .front img{filter:drop-shadow(0 10px 30px rgba(0,0,0,.45))}
+  .halo{position:absolute;left:825px;top:190px;width:420px;height:420px;transform:translateX(-50%);border-radius:50%;
+    background:radial-gradient(closest-side,rgba(95,227,208,.26),rgba(95,227,208,.06) 60%,transparent)}
+  .bubble{position:absolute;left:452px;top:40px;z-index:30;width:262px;padding:13px 16px 14px;border-radius:16px 16px 4px 16px;
+    background:rgba(18,21,36,.92);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+  .bubble .who{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--warm)}
+  .bubble p{font-size:14.5px;line-height:1.42;margin-top:5px;color:#f1ede4}
+</style></head>
+<body><div class="stage">
+  <div class="dots"></div>
+  <div class="copy">
+    <span class="tag"><i></i>Hermes Desktop plugin</span>
+    <h1>Avatar</h1>
+    <div class="lede">A cartoon companion<br>for your work.</div>
+    <div class="sub">Your avatar sees when a task is stuck, done, or waiting on you. Pick the character who keeps you company.</div>
+  </div>
+  <div class="cmd"><b>$</b> hermes plugins install kin</div>
+
+  <!-- back row: peeks between the front row -->
+  <div class="t back" style="left:700px;bottom:200px;height:250px;z-index:1"><img src="toons/ollie.png"></div>
+  <div class="t back" style="left:950px;bottom:205px;height:250px;z-index:1"><img src="toons/barley.png"></div>
+  <div class="t back" style="left:1128px;bottom:180px;height:230px;z-index:1"><img src="toons/mochi.png"></div>
+  <!-- front row -->
+  <div class="t" style="left:575px;height:320px;z-index:3"><img src="toons/juno.png"></div>
+  <div class="t" style="left:1065px;height:310px;z-index:3"><img src="toons/sprout.png"></div>
+  <div class="halo"></div>
+  <div class="t front" style="left:825px;height:350px;z-index:5"><img src="toons/zip.png"></div>
+
+  <div class="bubble">
+    <div class="who">Your avatar</div>
+    <p>Welcome back. 4 finished and 1 failed while you were away. One of those needs you.</p>
+  </div>
+</div></body></html>

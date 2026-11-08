@@ -25,6 +25,13 @@ CHARACTERS = {
     "kael": {"voice": "onyx", "instructions": "Battle commander: firm, commanding, decisive.", "greet": "Commander Kael here. Ready for orders."},
     "sera": {"voice": "coral", "instructions": "Neural architect: bright, technical, precise.", "greet": "Sera linked. Neural telemetry online."},
     "freya": {"voice": "nova", "instructions": "Northern valkyrie: strong, noble, protective.", "greet": "Freya standing by. Your shield is up."},
+    # Cartoon personas (2D portraits).
+    "zip": {"voice": "verse", "instructions": "Cheerful little robot sidekick: bright, quick, upbeat.", "greet": "Zip online. Your builds are in good hands."},
+    "juno": {"voice": "alloy", "instructions": "Confident focus coach: warm, direct, encouraging.", "greet": "Juno here. Let's get you unstuck."},
+    "sprout": {"voice": "fable", "instructions": "Excited baby dragon: curious, bouncy, eager.", "greet": "Sprout's awake! What are we building?"},
+    "ollie": {"voice": "ash", "instructions": "Jolly octopus ship captain: hearty, playful.", "greet": "Captain Ollie. All tasks on deck."},
+    "barley": {"voice": "ballad", "instructions": "Calm bear: slow, warm, steady.", "greet": "Barley here. Coffee's on. Take your time."},
+    "mochi": {"voice": "shimmer", "instructions": "Sleepy soft creature: gentle, hushed, soothing.", "greet": "Mochi's on watch. Rest easy."},
 }
 
 PORTRAIT_DIR = os.path.join(os.path.dirname(__file__), "..", "avatars", "persona-art")

@@ -876,6 +876,13 @@ const AVATAR_VOICES = {
   kael: { voice: "onyx", role: "Sunmane Commander", greet: "Commander Kael here. Ready for orders." },
   vance: { voice: "echo", role: "Spec-Ops AI", greet: "Vance on comms. Tactical feed active." },
   elena: { voice: "sage", role: "Arcane Archivist", greet: "Elena here. Archives and logs are open." },
+  // Cartoon personas (2D portraits).
+  zip: { voice: "verse", role: "Systems Sidekick", greet: "Zip online. Your builds are in good hands.", instructions: "Cheerful little robot sidekick: bright, quick, upbeat." },
+  juno: { voice: "alloy", role: "Focus Coach", greet: "Juno here. Let's get you unstuck.", instructions: "Confident focus coach: warm, direct, encouraging." },
+  sprout: { voice: "fable", role: "Curious Helper", greet: "Sprout's awake! What are we building?", instructions: "Excited baby dragon: curious, bouncy, eager." },
+  ollie: { voice: "ash", role: "Captain of the Queue", greet: "Captain Ollie. All tasks on deck.", instructions: "Jolly octopus ship captain: hearty, playful." },
+  barley: { voice: "ballad", role: "Calm Keeper", greet: "Barley here. Coffee's on. Take your time.", instructions: "Calm bear: slow, warm, steady." },
+  mochi: { voice: "shimmer", role: "Quiet-Hours Guard", greet: "Mochi's on watch. Rest easy.", instructions: "Sleepy soft creature: gentle, hushed, soothing." },
 };
 
 function speakCharacterLine(voice, text, instructions) {
