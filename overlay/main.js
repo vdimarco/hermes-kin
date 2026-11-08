@@ -912,36 +912,69 @@ function kinPython() {
   return "python3";
 }
 
-function speakCharacterLine(voice, text, instructions) {
-  const py = [
-    "import sys, subprocess, urllib.request, json, time",
-    'import os; sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))',
-    "from tools.tts_tool_openai import _resolve_openai_audio_client_config",
-    "key, base, _ = _resolve_openai_audio_client_config()",
-    "voice, text = sys.argv[1], sys.argv[2]",
-    "payload = {'model': 'gpt-4o-mini-tts', 'voice': voice, 'input': text, 'instructions': (sys.argv[3] if len(sys.argv) > 3 else '')}",
-    "req = urllib.request.Request(base.rstrip('/') + '/audio/speech', data=json.dumps(payload).encode(), headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})",
-    "import pathlib; mp3 = str(pathlib.Path.home() / '.hermes' / 'cache' / 'scratch' / ('kin-voice-%s-%d.mp3' % (voice, int(time.time()))))",
-    "open(mp3, 'wb').write(urllib.request.urlopen(req, timeout=25).read())",
-    "print(mp3)",
-  ].join("; ");
-  execFile(kinPython(), ["-c", py, voice, text, instructions || ""], { timeout: 35000 }, (err, stdout, stderr) => {
-    if (err) console.error("[tts] execFile error:", String(err && err.message).slice(0, 300));
-    if (stderr) console.error("[tts] stderr:", String(stderr).slice(0, 300));
-    const out = String(stdout || "");
-    const mp3 = out.trim().split("\n").pop();
-    if (err || !mp3.startsWith("/")) return;
-    // Renderer-first: it plays the file through WebAudio and lip-syncs the
-    // 2D mouth off the live analyser level. If it never acks (no window yet,
-    // autoplay blocked), fall back to plain ffplay.
-    if (win && !win.isDestroyed()) {
-      win.webContents.send("kin:speak", { mp3 });
-      const t = setTimeout(() => ffplayMp3(mp3), 2500);
-      speakAcks.set(mp3, t);
-    } else {
-      ffplayMp3(mp3);
+let speakSeq = 0;
+function splitForSpeech(text, target = 140, hardMax = 220) {
+  const str = String(text || "").trim();
+  if (!str) return [];
+  const parts = str.match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) || [str];
+  const chunks = [];
+  let buf = "";
+  for (const p of parts) {
+    if (buf && (buf + p).length > hardMax) {
+      chunks.push(buf.trim());
+      buf = "";
     }
+    buf += p;
+    if (buf.length >= target) {
+      chunks.push(buf.trim());
+      buf = "";
+    }
+  }
+  if (buf.trim()) chunks.push(buf.trim());
+  return chunks.length ? chunks : [str];
+}
+
+function synthTtsChunk(voice, text, instructions) {
+  return new Promise((resolve) => {
+    const py = [
+      "import sys, subprocess, urllib.request, json, time",
+      'import os; sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))',
+      "from tools.tts_tool_openai import _resolve_openai_audio_client_config",
+      "key, base, _ = _resolve_openai_audio_client_config()",
+      "voice, text = sys.argv[1], sys.argv[2]",
+      "payload = {'model': 'gpt-4o-mini-tts', 'voice': voice, 'input': text, 'instructions': (sys.argv[3] if len(sys.argv) > 3 else '')}",
+      "req = urllib.request.Request(base.rstrip('/') + '/audio/speech', data=json.dumps(payload).encode(), headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})",
+      "import pathlib; mp3 = str(pathlib.Path.home() / '.hermes' / 'cache' / 'scratch' / ('kin-voice-%s-%d.mp3' % (voice, int(time.time() * 1000))))",
+      "open(mp3, 'wb').write(urllib.request.urlopen(req, timeout=25).read())",
+      "print(mp3)",
+    ].join("; ");
+    execFile(kinPython(), ["-c", py, voice, text, instructions || ""], { timeout: 35000 }, (err, stdout) => {
+      const mp3 = String(stdout || "").trim().split("\n").pop();
+      resolve(!err && mp3.startsWith("/") ? mp3 : null);
+    });
   });
+}
+
+function speakCharacterLine(voice, text, instructions) {
+  // Sentence-pipelined streaming: chunk 1 plays as soon as it is generated
+  // while later chunks are still synthesizing — time-to-first-audio is one
+  // short sentence (~1s) instead of the whole reply (~3-7s).
+  const chunks = splitForSpeech(text);
+  const total = chunks.length;
+  const lineId = `${Date.now()}-${++speakSeq}`;
+  (async () => {
+    for (let i = 0; i < total; i++) {
+      const mp3 = await synthTtsChunk(voice, chunks[i], instructions);
+      if (!mp3) return; // a failed chunk aborts the line (no half-voiced replies)
+      if (win && !win.isDestroyed()) {
+        win.webContents.send("kin:speak", { mp3, lineId, i, n: total });
+        const t = setTimeout(() => ffplayMp3(mp3), 2500);
+        speakAcks.set(mp3, t);
+      } else {
+        ffplayMp3(mp3);
+      }
+    }
+  })();
 }
 
 const speakAcks = new Map();

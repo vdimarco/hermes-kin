@@ -804,13 +804,84 @@ window.kinFloat?.onMic?.(({ active, level, bars, speaking }) => {
   }
 });
 
-// Character speaks (TTS mp3 from main): play in-renderer through WebAudio and
-// drive real lip-sync from the analyser level. Falls back to main's ffplay.
-let audioCtx = null;
-let speakingNow = false;
-window.kinFloat?.onSpeak?.(({ mp3 }) => {
-  if (!mp3) return;
+// Ordered playback queue: the main process streams a reply as sentence
+// chunks; each plays as soon as it lands, in order, so speech starts with
+// chunk 1 while later chunks are still synthesizing.
+const speakQueue = [];
+let speakLine = "";
+let speakBusy = false;
+
+function playSpeakChunk(mp3) {
+  speakBusy = true;
   const ack = () => window.kinFloat?.act?.({ kind: "speak-ack", mp3 });
+  const bail = () => window.kinFloat?.act?.({ kind: "speak-fallback", mp3 });
+  const done = () => {
+    avatar2d.setSpeech(0, false);
+    speakingNow = false;
+    root.classList.remove("char-speaking");
+    speakBusy = false;
+    drainSpeakQueue();
+  };
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const el = new Audio(mp3);
+    const srcNode = audioCtx.createMediaElementSource(el);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    srcNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let raf = 0;
+    const loop = () => {
+      if (el.paused || el.ended) return;
+      analyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < 48; i++) sum += data[i];
+      const lvl = Math.min(1, (sum / 48) / 80);
+      avatar2d.setSpeech(lvl * 1.5, true);
+      raf = requestAnimationFrame(loop);
+    };
+    el.addEventListener("playing", () => {
+      ack();
+      speakingNow = true;
+      root.classList.add("char-speaking");
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(loop);
+    });
+    el.addEventListener("ended", () => {
+      if (raf) cancelAnimationFrame(raf);
+      done();
+    });
+    el.addEventListener("error", () => {
+      if (!speakingNow) bail();
+      done();
+    });
+    el.play().catch(() => {
+      bail();
+      done();
+    });
+  } catch {
+    bail();
+    done();
+  }
+}
+
+function drainSpeakQueue() {
+  if (speakBusy || !speakQueue.length) return;
+  playSpeakChunk(speakQueue.shift());
+}
+
+window.kinFloat?.onSpeak?.(({ mp3, lineId } = {}) => {
+  if (!mp3) return;
+  // A new line flushes any queued remainder of the previous one; legacy
+  // single-shot events (no lineId) always flush.
+  if (!lineId || lineId !== speakLine) {
+    speakLine = lineId || "";
+    speakQueue.length = 0;
+  }
+  speakQueue.push(mp3);
+  drainSpeakQueue();
+});
   const bail = () => window.kinFloat?.act?.({ kind: "speak-fallback", mp3 });
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
