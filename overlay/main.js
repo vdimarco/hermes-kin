@@ -883,6 +883,7 @@ const AVATAR_VOICES = {
   ollie: { voice: "ash", role: "Captain of the Queue", greet: "Captain Ollie. All tasks on deck.", instructions: "Jolly octopus ship captain: hearty, playful." },
   barley: { voice: "ballad", role: "Calm Keeper", greet: "Barley here. Coffee's on. Take your time.", instructions: "Calm bear: slow, warm, steady." },
   mochi: { voice: "shimmer", role: "Quiet-Hours Guard", greet: "Mochi's on watch. Rest easy.", instructions: "Sleepy soft creature: gentle, hushed, soothing." },
+  moss: { voice: "onyx", role: "Chill Navigator", greet: "Moss here. No rush. We'll get there.", instructions: "Laid-back sloth: slow, mellow, unbothered, a little amused." },
 };
 
 function speakCharacterLine(voice, text, instructions) {

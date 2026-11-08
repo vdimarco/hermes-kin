@@ -496,7 +496,8 @@
     border-radius: 12px;
     padding: 8px;
     display: none;
-    grid-template-columns: repeat(3, 1fr);
+    /* Four columns keep all 13 personas visible without scrolling. */
+    grid-template-columns: repeat(4, 1fr);
     gap: 5px;
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.7);
     max-height: 330px;
@@ -654,6 +655,7 @@ const PERSONAS = [
   { id: "ollie", label: "Ollie", kind: "2d" },
   { id: "barley", label: "Barley", kind: "2d" },
   { id: "mochi", label: "Mochi", kind: "2d" },
+  { id: "moss", label: "Moss", kind: "2d" },
 ];
 const is2D = (p) => p?.kind === "2d";
 

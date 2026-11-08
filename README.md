@@ -4,11 +4,11 @@
 
 Avatar (plugin name `kin`) puts a 3D or cartoon companion in [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop). Your avatar watches your sessions. It tells you when a task is stuck, done, or waiting on you. It writes drafts and never sends for you.
 
-Pick one of twelve original characters: six 3D busts and six 2D cartoons. Each one has a voice of their own.
+Pick one of thirteen original characters: six 3D busts and seven 2D cartoons. Each one has a voice of their own.
 
 ![Pick your avatar: Kin, Elena, Vance, Kael, Sera, and Freya](docs/cast.png)
 
-![Cartoon avatars: Zip, Juno, Sprout, Ollie, Barley, and Mochi](docs/cast-toons.png)
+![Cartoon avatars: Zip, Juno, Sprout, Ollie, Barley, Mochi, and Moss](docs/cast-toons.png)
 
 An optional **floating overlay** (`overlay/`) puts your avatar on top of your desktop. Its eyes follow your cursor. A task drawer shows what Hermes is doing in plain English, and you can talk to Hermes by voice. The overlay is strictly opt-in.
 

@@ -12,11 +12,11 @@
   h2{font-family:Fraunces,serif;font-weight:700;font-size:60px;letter-spacing:-.03em;line-height:1}
   h2 em{font-style:italic;font-weight:500;color:#ffc98f}
   header p{font-size:16px;line-height:1.5;color:#a9adbf;width:400px;text-align:right}
-  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:16px}
   .card{--a:#ffb86b;position:relative;height:660px;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.09)}
   .face{position:relative;height:430px;overflow:hidden;background:radial-gradient(240px 260px at 50% 55%, color-mix(in srgb,var(--a) 34%,transparent), transparent 72%)}
-  .face img{position:absolute;left:50%;bottom:0;height:385px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(180deg,#000 80%,transparent 100%)}
+  .face img{position:absolute;left:50%;bottom:0;height:340px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(180deg,#000 80%,transparent 100%)}
   
   
   .body{position:relative;flex:1;padding:4px 18px 20px;display:flex;flex-direction:column}
@@ -30,7 +30,7 @@
 <body><div class="stage">
   <header>
     <h2>Pick your <em>avatar.</em></h2>
-    <p>Six original cartoon characters. Each one reacts to your work in its own way.</p>
+    <p>Seven original cartoon characters. Each one reacts to your work in its own way.</p>
   </header>
   <div class="grid">
     <div class="card" style="--a:#5fe3d0">
@@ -50,7 +50,7 @@
         <span class="chip">mood <b>eager</b></span></div></div>
     <div class="card" style="--a:#ff8a5c">
       <div class="face"><img src="toons/ollie.png"></div>
-      <div class="body"><div class="role">Captain of the queue</div><div class="name">Ollie</div>
+      <div class="body"><div class="role">Queue captain</div><div class="name">Ollie</div>
         <div class="greet">“Captain Ollie. All tasks on deck.”</div>
         <span class="chip">mood <b>jolly</b></span></div></div>
     <div class="card" style="--a:#e0645a">
@@ -63,5 +63,10 @@
       <div class="body"><div class="role">Quiet-hours guard</div><div class="name">Mochi</div>
         <div class="greet">“Mochi’s on watch. Rest easy.”</div>
         <span class="chip">mood <b>sleepy</b></span></div></div>
+    <div class="card" style="--a:#7fcfb8">
+      <div class="face"><img src="toons/moss.png"></div>
+      <div class="body"><div class="role">Chill navigator</div><div class="name">Moss</div>
+        <div class="greet">“Moss here. No rush. We’ll get there.”</div>
+        <span class="chip">mood <b>mellow</b></span></div></div>
   </div>
 </div></body></html>

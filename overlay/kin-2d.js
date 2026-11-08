@@ -8,7 +8,7 @@ const PDIR = "./avatars/persona-art/";
 // The cartoon personas are 2D only: their art lives in its own folder, apart
 // from persona-art/ (the 3D busts' picker renders).
 const TOON_DIR = "./avatars/toons/";
-const TOON_IDS = ["zip", "juno", "sprout", "ollie", "barley", "mochi"];
+const TOON_IDS = ["zip", "juno", "sprout", "ollie", "barley", "mochi", "moss"];
 const PORTRAIT_IDS = ["kin", "elena", "vance", "kael", "sera", "freya", ...TOON_IDS];
 const portraitSrc = (id, kind) =>
   `${TOON_IDS.includes(id) ? TOON_DIR : PDIR}${id}${kind ? `-${kind}` : ""}.png`;
