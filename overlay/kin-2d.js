@@ -75,7 +75,9 @@ export function mount2D(stageEl) {
     holder.style.cssText =
       "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:transform 90ms ease-out";
     const size = document.createElement("div");
-    size.style.cssText = "position:absolute;inset:0";
+    // Motion-safe frame: every animation (breathe, gaze, talk-bob, mood
+    // scale) must stay INSIDE the stage, or the head clips at the edge.
+    size.style.cssText = "position:absolute;inset:14px";
     wrap = document.createElement("div");
     wrap.style.cssText =
       "position:absolute;inset:0;will-change:transform;transition:transform 0.3s cubic-bezier(.2,.8,.2,1)";
@@ -86,7 +88,7 @@ export function mount2D(stageEl) {
       "position:absolute;inset:0;animation:k2d-breathe 4.2s ease-in-out infinite";
     const styleEl = document.createElement("style");
     styleEl.textContent =
-      "@keyframes k2d-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}";
+      "@keyframes k2d-breathe{0%,100%{transform:translate(0,0) rotate(0deg)}50%{transform:translate(1.6px,-5px) rotate(-0.9deg)}}";
     breathe.appendChild(styleEl);
     const mkLayer = (kind, extra) => {
       const im = document.createElement("img");
