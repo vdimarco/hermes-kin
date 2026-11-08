@@ -601,7 +601,7 @@
 
     <div id="bar-main" title="Click status to open Hermes">
       <button id="persona-btn" type="button" title="Avatar — click to choose your persona">Avatar ▾</button>
-      <button id="voice-provider-btn" type="button" title="Voice engine — click to switch (Kokoro is local and free; ElevenLabs needs a key; OpenAI is the cloud default)">Kokoro</button>
+      <button id="voice-provider-btn" type="button" title="Voice engine — click to switch (Kokoro is local and free; ElevenLabs needs a key; OpenAI is the cloud default)">TTS: Kokoro ▾</button>
       <span id="pill-text">Listening…</span>
     </div>
 
@@ -1097,12 +1097,14 @@ function micUI(active, _status, level = 0, bars = [0, 0, 0, 0], speaking = false
 const voiceProviderBtn = document.getElementById("voice-provider-btn");
 const TTS_PROVIDERS = ["kokoro", "elevenlabs", "openai"];
 const PROVIDER_LABEL = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" };
+const ttsPillText = (p) => `TTS: ${PROVIDER_LABEL[p] || "Kokoro"} ▾`;
+voiceProviderBtn.textContent = ttsPillText("kokoro");
 voiceProviderBtn.addEventListener("click", (e) => {
   e.stopPropagation();
-  const cur = (lastState && TTS_PROVIDERS.includes(lastState.tts_provider)) ? lastState.tts_provider : "kokoro";
+  const cur = TTS_PROVIDERS.includes(lastState?.ttsProvider) ? lastState.ttsProvider : "kokoro";
   const next = TTS_PROVIDERS[(TTS_PROVIDERS.indexOf(cur) + 1) % TTS_PROVIDERS.length];
   window.kinFloat?.act?.({ kind: "set-tts-provider", provider: next });
-  voiceProviderBtn.textContent = PROVIDER_LABEL[next] || "Kokoro";
+  voiceProviderBtn.textContent = ttsPillText(next);
 });
 // Right-click the mic for gpt-live conversation mode (Hermes full-duplex voice).
 micBtn.addEventListener("contextmenu", (e) => {
@@ -1274,9 +1276,9 @@ window.kinFloat?.onState?.((state) => {
   // mic-on only when kin's mic loop is actually running.
   micEnabled = Boolean(voiceActive);
   if (lastState.ttsProvider) {
-    const lbl = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" }[lastState.ttsProvider];
+    const want = ttsPillText(lastState.ttsProvider);
     const vpBtn = document.getElementById("voice-provider-btn");
-    if (vpBtn && lbl && vpBtn.textContent !== lbl) vpBtn.textContent = lbl;
+    if (vpBtn && vpBtn.textContent !== want) vpBtn.textContent = want;
   }
   root.classList.toggle("mic-on", micEnabled);
   if (!micEnabled) root.classList.remove("mic-speaking");
