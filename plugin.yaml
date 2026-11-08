@@ -1,6 +1,6 @@
 name: kin
-version: 0.4.0
-description: Kin — the companion who actually pays attention. She watches your work, knows what's stuck, and never leaves you hanging.
+version: 0.4.1
+description: Gives Hermes Desktop a face. A character that reacts to your work and shows what Hermes is doing.
 author: Kin
 license: MIT
 manifest_version: 2

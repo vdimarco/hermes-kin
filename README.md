@@ -55,15 +55,23 @@ overlay (Electron)                Hermes plugin                     Hermes
 
 The overlay writes to the plugin's own SQLite settings table; the gateway dashboard route `GET /outbox` reads-and-clears each key atomically; the Desktop pane acts through the plugin SDK. No gateway patching, no socket sniffing, no second agent.
 
-## What it does not do
+Spoken lines ride the same table: the overlay writes `pending_speech`, `GET /outbox` hands it to Hermes's own `text_to_speech` tool, and the overlay plays the file the plugin stores in `speech_ready`. The overlay never holds a provider key.
 
-- The **plugin** captures no microphone, camera, or screen. It uses Hermes gateway events, the focused session, and its own memory only. No third-party network calls, no telemetry, no `ctx.llm` calls — recaps are counted from stored events, not summarized by a model. No secrets: nothing is read from `.env`, `auth.json`, or another tool's credential store. No shell commands, no background process, no patches to Hermes.
-- The **overlay** is a separate app you run yourself, and everything it can do is disclosed here:
-  - Microphone capture, only after you toggle it on. It starts off at every launch, and says "Mic not found" instead of spinning if no mic is available.
-  - Speech transcription goes to Hermes's configured STT provider (or a local whisper.cpp when installed); spoken recaps use Hermes's configured OpenAI TTS voice.
-  - Screen capture of the active window or terminal uses the OS-native tool (`grim` on Linux, `screencapture` on macOS, PowerShell on Windows), OCR uses `tesseract` when installed, and window queries use the Hyprland socket / AppleScript / Win32 — all local, only when you click the action.
-  - It reads Hermes's session list and background process list (read-only) to draw the task drawer, and writes only to the Kin plugin's own SQLite table.
-  - No telemetry. No accounts. Nothing leaves your machine except the STT/TTS calls above.
+## Privacy and disclosures
+
+- The **plugin** captures no microphone, camera, or screen. It uses Hermes gateway events, the focused session, and its own memory only. No telemetry and no `ctx.llm` calls: recaps are counted from stored events, not summarized by a model. No secrets: nothing is read from `.env`, `auth.json`, or another tool's credential store. No shell commands, no background process, no patches to Hermes.
+  - Its one network path: when the overlay asks for a spoken line, the plugin's `/outbox` route calls Hermes's own `text_to_speech` tool (the published `tools.registry` API). Hermes picks the TTS provider and holds its key; the plugin only gets back an audio file path.
+  - **Spoken replies:** after each chat turn, the `post_llm_call` hook stores the first ~280 characters of the reply (markdown and code stripped) for the overlay to speak. That text goes to the TTS provider through the path above. Mute or sleep turns it off, and nothing is spoken unless the overlay is running.
+- The **overlay** is a separate app you run yourself. Everything it does:
+  - **Microphone**, only after you toggle it on. It starts off at every launch, and says "Mic not found" instead of spinning if no mic is available.
+  - **Speech to text:** a local whisper.cpp build (`whisper-cli`) when installed. Otherwise it runs `python3` to call Hermes's `tools.voice_mode.transcribe_recording`, which uses Hermes's configured STT provider and key. The overlay never reads a key.
+  - **Spoken lines:** the overlay asks the Kin plugin, which uses Hermes's `text_to_speech` tool (above). It plays the audio in its window, or with `ffplay` as a fallback.
+  - **Persona voice changes Hermes's voice.** Switching persona runs `hermes config set tts.openai.voice <voice>` and `hermes config set voice.gpt_live.voice <voice>`. That sets the TTS voice for all of Hermes, not just the overlay. To change it back, run the same command with the voice you want.
+  - **Screen capture** of the active window or terminal uses the OS tool (`grim` on Linux, `screencapture` on macOS, PowerShell on Windows), and OCR uses `tesseract` when installed. Only when you click the camera or terminal button.
+  - **Window queries** use the Hyprland socket and `hyprctl` on Linux, and AppleScript or Win32 on macOS and Windows. Focusing Hermes uses `open` (macOS) or PowerShell (Windows).
+  - **Reads** `~/.hermes/state.db` (read-only) for sessions, turns, and background processes, to draw the task drawer.
+  - **Writes** the Kin plugin's own SQLite table and the two Hermes config keys above. Nothing else.
+  - **Network:** only the STT and TTS calls Hermes makes for it. No telemetry, no accounts.
 
 Memory is a SQLite file in the profile plugin-data directory (`plugin_db("kin")`). It keeps tool names, success or failure, a short error line, and wrapup notes — not transcripts or tool arguments. `/kin wipe` clears it.
 

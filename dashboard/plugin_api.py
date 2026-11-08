@@ -1,7 +1,14 @@
-"""Local routes for the Kin desktop half. No outbound network."""
+"""Local routes for the Kin desktop half.
+
+No outbound network of its own. Spoken lines go through Hermes's own
+``text_to_speech`` tool (the published ``tools.registry`` API): Hermes picks
+the provider and holds its key, and Kin only gets back an audio file path.
+"""
 
 from __future__ import annotations
 
+import asyncio
+import json
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -26,6 +33,54 @@ def _mem():
     if _memory is None:
         _memory = _load_memory_class()()
     return _memory
+
+
+_speech_latest = ""
+
+
+def _synthesize(req):
+    """Speak a line through Hermes's text_to_speech tool, chunk by chunk.
+
+    Each finished chunk is listed in `speech_ready` right away, so the overlay
+    plays chunk 1 while later chunks are still being made. A newer request
+    stops an older one, so a stale line never overwrites a new one.
+    """
+    global _speech_latest
+    rid = str(req.get("id") or "")
+    _speech_latest = rid
+    chunks = req.get("chunks")
+    if not isinstance(chunks, list):
+        chunks = [req.get("text")]
+    chunks = [str(c).strip()[:600] for c in chunks if str(c or "").strip()][:12]
+    instructions = str(req.get("instructions") or "").strip()[:300]
+    state = {"id": rid, "items": [], "done": False, "error": ""}
+
+    def publish():
+        if _speech_latest == rid:
+            _mem().update_settings({"speech_ready": json.dumps(state)})
+
+    try:
+        from tools.registry import discover_builtin_tools, registry
+
+        if registry.get_entry("text_to_speech") is None:
+            discover_builtin_tools()
+        for i, chunk in enumerate(chunks):
+            if _speech_latest != rid:
+                return
+            args = {"text": chunk}
+            if instructions:
+                args["instructions"] = instructions
+            raw = registry.dispatch("text_to_speech", args)
+            data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+            if not (data.get("success") and data.get("file_path")):
+                state["error"] = str(data.get("error") or "speech failed")[:200]
+                break
+            state["items"].append({"i": i, "path": str(data["file_path"])})
+            publish()
+    except Exception as exc:
+        state["error"] = type(exc).__name__
+    state["done"] = True
+    publish()
 
 
 def _emit(event, payload):
@@ -72,7 +127,10 @@ async def get_outbox():
     draft = s.get("pending_draft") or ""
     voice_cmd = s.get("pending_voice_cmd") or ""
     nav = s.get("pending_nav") or ""
+    speech = s.get("pending_speech") or ""
     updates = {}
+    if speech:
+        updates["pending_speech"] = ""
     if prompt:
         updates["pending_prompt"] = ""
     if draft:
@@ -83,6 +141,15 @@ async def get_outbox():
         updates["pending_nav"] = ""
     if updates:
         _mem().update_settings(updates)
+    if speech:
+        # The overlay asked for a spoken line. Synthesis takes seconds, so it
+        # runs off the event loop; the overlay picks up `speech_ready`.
+        try:
+            req = json.loads(speech)
+        except ValueError:
+            req = None
+        if isinstance(req, dict) and (req.get("chunks") or str(req.get("text") or "").strip()):
+            asyncio.get_running_loop().run_in_executor(None, _synthesize, req)
     return {"prompt": prompt, "draft": draft, "voice_cmd": voice_cmd, "nav": nav}
 
 
