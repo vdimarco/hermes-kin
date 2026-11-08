@@ -631,7 +631,6 @@
 
 <script type="module">
 import { mountAvatar, preloadAvatars } from "./kin-avatar.js";
-import { mount2D, portraitSrc } from "./kin-2d.js";
 
 const PERSONAS = [
   { id: "kin", label: "Kin", url: "kin" },
@@ -640,17 +639,6 @@ const PERSONAS = [
   { id: "kael", label: "Kael", url: "./avatars/kael.glb" },
   { id: "sera", label: "Sera", url: "./avatars/sera.glb" },
   { id: "freya", label: "Freya", url: "./avatars/freya.glb" },
-  { id: "trump", label: "Donald", mode: "2d" },
-  { id: "kim", label: "Kim K", mode: "2d" },
-  { id: "kanye", label: "Kanye", mode: "2d" },
-  { id: "goku", label: "Goku", mode: "2d" },
-  { id: "vegeta", label: "Vegeta", mode: "2d" },
-  { id: "luffy", label: "Luffy", mode: "2d" },
-  { id: "dalai", label: "Dalai Lama", mode: "2d" },
-  { id: "spongebob", label: "SpongeBob", mode: "2d" },
-  { id: "pikachu", label: "Pikachu", mode: "2d" },
-  { id: "homer", label: "Homer", mode: "2d" },
-  { id: "snoop", label: "Snoop", mode: "2d" },
 ];
 
 const GLB_ICON = `<svg viewBox="50 22 100 130" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="92" r="56" fill="#2c3550" stroke="#171720" stroke-width="3.5"/><ellipse cx="78" cy="95" rx="13" ry="15" fill="#fff"/><ellipse cx="122" cy="95" rx="13" ry="15" fill="#fff"/><circle cx="78" cy="95" r="5" fill="#8b92a0"/><circle cx="122" cy="95" r="5" fill="#8b92a0"/><path d="M64 62 Q64 34 100 32 Q136 34 136 62" fill="none" stroke="#4a5468" stroke-width="7"/></svg>`;
@@ -659,6 +647,7 @@ const root = document.getElementById("root");
 const glCanvas = document.getElementById("gl");
 const flatCanvas = document.getElementById("flat");
 const stage = document.getElementById("stage");
+import { mount2D } from "./kin-2d.js";
 const micBtn = document.getElementById("mic-btn");
 const eqBars = Array.from(document.querySelectorAll("#eq span"));
 const personaBtn = document.getElementById("persona-btn");
@@ -708,14 +697,7 @@ async function selectPersona(next) {
   loadedAvatarId = next.id;
   personaBtn.textContent = "Avatar ▾";
   personaBtn.title = `Avatar — ${next.label}`;
-  if (next.mode === "2d") {
-    avatar2d.setCharacter(next.id);
-    avatar2d.setMood(currentMood);
-    setMode2D(true);
-  } else {
-    setMode2D(false);
-    await avatar?.setAvatar?.(next.url);
-  }
+  await avatar?.setAvatar?.(next.url);
   window.kinFloat?.act?.({ kind: "set-avatar", avatarId: next.id, label: next.label });
   document.getElementById("char-picker").classList.remove("open");
 }
@@ -728,9 +710,7 @@ PERSONAS.forEach((p) => {
   b.dataset.id = p.id;
   b.type = "button";
   b.title = p.label;
-  const face = p.mode === "2d"
-    ? `<img class="chip-face-img" src="${portraitSrc(p.id)}" alt="${p.label}" draggable="false">`
-    : GLB_ICON;
+  const face = `<img class="chip-face-img" src="./avatars/persona-art/${p.id}.png" alt="${p.label}" draggable="false">`;
   b.innerHTML = `<span class="chip-face">${face}</span><span class="chip-label">${p.label}</span>`;
   b.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -1151,14 +1131,7 @@ window.kinFloat?.onState?.((state) => {
       loadedAvatarId = found.id;
       personaBtn.textContent = "Avatar ▾";
       personaBtn.title = `Avatar — ${found.label}`;
-      if (found.mode === "2d") {
-        avatar2d.setCharacter(found.id);
-        avatar2d.setMood(currentMood);
-        setMode2D(true);
-      } else {
-        setMode2D(false);
-        avatar?.setAvatar?.(found.url);
-      }
+      avatar?.setAvatar?.(found.url);
     }
   }
   if (avatar && mood && mood !== currentMood) {

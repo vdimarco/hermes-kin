@@ -4,8 +4,8 @@
 // blinking, audio-level lip-sync, cursor gaze parallax, mood posture, and an
 // idle float. Pure DOM — no 3D, no WebGL, works the same on every platform.
 
-const PDIR = "./avatars/portraits/";
-const PORTRAIT_IDS = ["trump", "kim", "kanye", "goku", "vegeta", "luffy", "dalai", "spongebob", "pikachu", "homer", "snoop"];
+const PDIR = "./avatars/persona-art/";
+const PORTRAIT_IDS = ["kin", "elena", "vance", "kael", "sera", "freya"];
 const portraitSrc = (id, kind) => `${PDIR}${id}${kind ? `-${kind}` : ""}.png`;
 
 const MOOD_POSE = {
@@ -73,19 +73,17 @@ export function mount2D(stageEl) {
     holder = document.createElement("div");
     holder.id = "k2d-holder";
     holder.style.cssText =
-      "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none";
+      "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:transform 90ms ease-out";
     const size = document.createElement("div");
-    size.style.cssText = "width:225px;height:238px;position:relative";
+    size.style.cssText = "position:absolute;inset:0";
     wrap = document.createElement("div");
     wrap.style.cssText =
       "position:absolute;inset:0;will-change:transform;transition:transform 0.3s cubic-bezier(.2,.8,.2,1)";
     breathe = document.createElement("div");
+    // The portraits are transparent cutouts (rembg), so no edge masking is
+    // needed — the character floats directly over whatever is behind the HUD.
     breathe.style.cssText =
-      "position:absolute;inset:0;animation:k2d-breathe 4.2s ease-in-out infinite;" +
-      // Fade the portrait's dark background out at the edges so the bust
-      // blends into the transparent overlay instead of a hard rectangle.
-      "-webkit-mask-image:radial-gradient(ellipse 82% 88% at 50% 46%, #000 62%, transparent 97%);" +
-      "mask-image:radial-gradient(ellipse 82% 88% at 50% 46%, #000 62%, transparent 97%);";
+      "position:absolute;inset:0;animation:k2d-breathe 4.2s ease-in-out infinite";
     const styleEl = document.createElement("style");
     styleEl.textContent =
       "@keyframes k2d-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}";
@@ -94,7 +92,9 @@ export function mount2D(stageEl) {
       const im = document.createElement("img");
       im.draggable = false;
       im.src = portraitSrc(charId, kind);
-      im.style.cssText = `position:absolute;inset:0;width:100%;height:100%;object-fit:cover;${extra}`;
+      // Transparent cutouts: contain keeps the whole character visible, and the
+      // drop-shadow hugs the silhouette so she floats with depth over any app.
+      im.style.cssText = `position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,0.55));${extra}`;
       return im;
     };
     imgBase = mkLayer("", "");
@@ -134,6 +134,12 @@ export function mount2D(stageEl) {
         mouthOpen = nextOpen;
         imgMouth.style.opacity = mouthOpen ? "1" : "0";
       }
+    }
+    // Talk-bob: the whole character bounces gently with the live audio level
+    // so speech reads as physical motion, not just a swapping mouth.
+    if (holder) {
+      const bob = talking ? Math.min(4, speechLevel * 4) : 0;
+      holder.style.transform = `translateY(${(-bob).toFixed(1)}px)`;
     }
   }
 

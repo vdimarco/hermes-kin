@@ -25,21 +25,10 @@ CHARACTERS = {
     "kael": {"voice": "onyx", "instructions": "Battle commander: firm, commanding, decisive.", "greet": "Commander Kael here. Ready for orders."},
     "sera": {"voice": "coral", "instructions": "Neural architect: bright, technical, precise.", "greet": "Sera linked. Neural telemetry online."},
     "freya": {"voice": "nova", "instructions": "Northern valkyrie: strong, noble, protective.", "greet": "Freya standing by. Your shield is up."},
-    "trump": {"voice": "onyx", "instructions": "Bombastic New York real-estate mogul parody: grand self-congratulatory superlatives, supreme confidence, tangents about how tremendous everything is.", "greet": "Tremendous to be on your desktop. This machine? The best machine. Nobody runs a desktop better than us, believe me."},
-    "kim": {"voice": "shimmer", "instructions": "Polished Los Angeles socialite: breathy, calm, unhurried, perfectly composed, faint vocal fry.", "greet": "Hey. Your desktop looks amazing today. I'm watching everything, and honestly? Iconic."},
-    "kanye": {"voice": "echo", "instructions": "Intense, passionate creative genius: emphatic, swings between calm reflection and excited declarations of brilliance.", "greet": "Yo. I'm not saying I'm the best overlay on your desktop. But I am saying... I'm the best overlay on your desktop."},
-    "goku": {"voice": "ash", "instructions": "Hot-blooded heroic anime protagonist: boundless friendly energy, excited, loves training and a good fight.", "greet": "Hey! Great to see you! I'm watching your desktop — there's some really strong work happening over here!"},
-    "vegeta": {"voice": "onyx", "instructions": "Arrogant saiyan prince: clipped, haughty, prideful, disdainful, reluctantly impressed.", "greet": "Hmph. I am the prince of all overlays. Your desktop is... adequate. Barely. Do not waste my time."},
-    "luffy": {"voice": "verse", "instructions": "Cheerful carefree pirate captain: simple direct words, always a little hungry, laughs easily.", "greet": "Shishishi! I'm Luffy! Your desktop's got a LOT of stuff on it. Hey — is there food anywhere on here?"},
-    "dalai": {"voice": "sage", "instructions": "Gentle elderly Tibetan monk: serene warmth, unhurried, compassionate, softly humorous.", "greet": "Ah, hello my friend. Every pixel on this desktop is a chance for kindness. Let us begin... gently."},
-    "spongebob": {"voice": "coral", "instructions": "Squeaky, bubbly, relentlessly enthusiastic underwater fry cook: pure joy, always ready.", "greet": "I'm ready! I'm ready! Ready to watch your desktop, that is! Aye aye, captain!"},
-    "pikachu": {"voice": "coral", "instructions": "Cute electric mouse creature: speak mostly in variations of your own name — 'Pika pika!', 'Pika-chuuu!', 'Pi-ka!' — with bright chirpy energy and one or two simple excited English words mixed in.", "greet": "Pika pika! Pikachu! Pika-chuuuu!"},
-    "homer": {"voice": "ash", "instructions": "Bungling well-meaning sitcom dad: slow dopey drawl, easily distracted, loves donuts and beer, exclaims 'D'oh!' when frustrated and 'Mmm...' when hungry.", "greet": "D'oh! Wait — why am I on a computer? Mmm... is there a donuts folder on here?"},
-    "snoop": {"voice": "verse", "instructions": "Mellow West Coast hip-hop legend: laid-back smooth drawl, calm unhurried cool, warm and friendly, occasionally adds a silky 'yeahhh' or 'you dig?'", "greet": "Ay yo, what's good. The Dogg is on ya desktop now, keepin' it smooth. You dig?"},
 }
 
-PORTRAIT_DIR = os.path.expanduser("~/Work/kin-float/avatars/portraits")
-PORTRAITS_2D = ["trump", "kim", "kanye", "goku", "vegeta", "luffy", "dalai", "spongebob", "pikachu", "homer", "snoop"]
+PORTRAIT_DIR = os.path.join(os.path.dirname(__file__), "..", "avatars", "persona-art")
+PORTRAITS_2D = ["kin", "elena", "vance", "kael", "sera", "freya"]
 
 
 def resolve_gateway():
