@@ -7,6 +7,7 @@ plugins.hook_callback_timeout (30 seconds). Kin does not use that budget.
 from __future__ import annotations
 
 import logging
+import json
 import time
 
 from .logic import as_bool, safe_call, tool_failed
@@ -49,6 +50,43 @@ def _post_tool(tool_name="", args=None, result="", **kwargs):
         detail=detail,
         session_id=str(kwargs.get("session_id") or kwargs.get("task_id") or ""),
     )
+
+
+import re as _re
+
+_SPEECH_MAX = 280
+
+
+def _speech_line(text, limit=_SPEECH_MAX):
+    """Reduce an assistant reply to something that reads well aloud."""
+    text = _re.sub(r"```.*?```", " Code section omitted. ", text, flags=_re.S)
+    text = _re.sub(r"`[^`]*`", " ", text)
+    text = _re.sub(r"MEDIA:\S+", " ", text)
+    text = _re.sub(r"::preview\{[^}]*\}", " ", text)
+    text = _re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", text)
+    text = _re.sub(r"[*_#>\[\]{}|]", " ", text)
+    text = _re.sub(r"\s+", " ", text).strip()
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    idx = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
+    return (cut[: idx + 1] if idx > limit // 3 else cut).strip()
+
+
+def _post_llm(assistant_response="", **kwargs):
+    """Speak chat replies through the persona: queue pending_say for the overlay."""
+    text = str(assistant_response or "").strip()
+    if not text:
+        return
+    s = _mem().get_settings()
+    if as_bool(s.get("mute")) or as_bool(s.get("sleep")):
+        return
+    if not as_bool(s.get("speak_replies", True)):
+        return
+    line = _speech_line(text)
+    if not line:
+        return
+    _mem().update_settings({"pending_say": json.dumps({"ts": time.time(), "text": line})})
 
 
 def _api_error(error=None, status_code=None, **kwargs):
@@ -202,4 +240,5 @@ def register(ctx):
     ctx.register_hook("on_session_start", lambda **kwargs: safe_call(_session_start, **kwargs))
     ctx.register_hook("on_session_end", lambda **kwargs: safe_call(_session_end, **kwargs))
     ctx.register_hook("pre_llm_call", lambda **kwargs: safe_call(_pre_llm, **kwargs))
+    ctx.register_hook("post_llm_call", lambda **kwargs: safe_call(_post_llm, **kwargs))
     ctx.register_command("kin", _command, description="Kin companion controls", args_hint="status|mute|sleep|wake|quiet|memory|wipe|wrapup")

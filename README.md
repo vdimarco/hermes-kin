@@ -61,6 +61,7 @@ Spoken lines ride the same table: the overlay writes `pending_speech`, `GET /out
 
 - The **plugin** captures no microphone, camera, or screen. It uses Hermes gateway events, the focused session, and its own memory only. No telemetry and no `ctx.llm` calls: recaps are counted from stored events, not summarized by a model. No secrets: nothing is read from `.env`, `auth.json`, or another tool's credential store. No shell commands, no background process, no patches to Hermes.
   - Its one network path: when the overlay asks for a spoken line, the plugin's `/outbox` route calls Hermes's own `text_to_speech` tool (the published `tools.registry` API). Hermes picks the TTS provider and holds its key; the plugin only gets back an audio file path.
+  - **Spoken replies:** after each chat turn, the `post_llm_call` hook stores the first ~280 characters of the reply (markdown and code stripped) for the overlay to speak. That text goes to the TTS provider through the path above. Mute or sleep turns it off, and nothing is spoken unless the overlay is running.
 - The **overlay** is a separate app you run yourself. Everything it does:
   - **Microphone**, only after you toggle it on. It starts off at every launch, and says "Mic not found" instead of spinning if no mic is available.
   - **Speech to text:** a local whisper.cpp build (`whisper-cli`) when installed. Otherwise it runs `python3` to call Hermes's `tools.voice_mode.transcribe_recording`, which uses Hermes's configured STT provider and key. The overlay never reads a key.

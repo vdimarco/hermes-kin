@@ -35,27 +35,52 @@ def _mem():
     return _memory
 
 
+_speech_latest = ""
+
+
 def _synthesize(req):
-    """Speak one line through Hermes's text_to_speech tool; store the result for the overlay."""
-    result = {"id": str(req.get("id") or ""), "path": "", "error": ""}
+    """Speak a line through Hermes's text_to_speech tool, chunk by chunk.
+
+    Each finished chunk is listed in `speech_ready` right away, so the overlay
+    plays chunk 1 while later chunks are still being made. A newer request
+    stops an older one, so a stale line never overwrites a new one.
+    """
+    global _speech_latest
+    rid = str(req.get("id") or "")
+    _speech_latest = rid
+    chunks = req.get("chunks")
+    if not isinstance(chunks, list):
+        chunks = [req.get("text")]
+    chunks = [str(c).strip()[:600] for c in chunks if str(c or "").strip()][:12]
+    instructions = str(req.get("instructions") or "").strip()[:300]
+    state = {"id": rid, "items": [], "done": False, "error": ""}
+
+    def publish():
+        if _speech_latest == rid:
+            _mem().update_settings({"speech_ready": json.dumps(state)})
+
     try:
         from tools.registry import discover_builtin_tools, registry
 
         if registry.get_entry("text_to_speech") is None:
             discover_builtin_tools()
-        args = {"text": str(req.get("text") or "")[:600]}
-        instructions = str(req.get("instructions") or "").strip()
-        if instructions:
-            args["instructions"] = instructions[:300]
-        raw = registry.dispatch("text_to_speech", args)
-        data = json.loads(raw) if isinstance(raw, str) else (raw or {})
-        if data.get("success") and data.get("file_path"):
-            result["path"] = str(data["file_path"])
-        else:
-            result["error"] = str(data.get("error") or "speech failed")[:200]
+        for i, chunk in enumerate(chunks):
+            if _speech_latest != rid:
+                return
+            args = {"text": chunk}
+            if instructions:
+                args["instructions"] = instructions
+            raw = registry.dispatch("text_to_speech", args)
+            data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+            if not (data.get("success") and data.get("file_path")):
+                state["error"] = str(data.get("error") or "speech failed")[:200]
+                break
+            state["items"].append({"i": i, "path": str(data["file_path"])})
+            publish()
     except Exception as exc:
-        result["error"] = type(exc).__name__
-    _mem().update_settings({"speech_ready": json.dumps(result)})
+        state["error"] = type(exc).__name__
+    state["done"] = True
+    publish()
 
 
 def _emit(event, payload):
@@ -123,7 +148,7 @@ async def get_outbox():
             req = json.loads(speech)
         except ValueError:
             req = None
-        if isinstance(req, dict) and str(req.get("text") or "").strip():
+        if isinstance(req, dict) and (req.get("chunks") or str(req.get("text") or "").strip()):
             asyncio.get_running_loop().run_in_executor(None, _synthesize, req)
     return {"prompt": prompt, "draft": draft, "voice_cmd": voice_cmd, "nav": nav}
 

@@ -582,6 +582,7 @@ function createWindow() {
   // 3. Poll Kin SQLite state + tasks + voice state
   let transientMoodUntil = 0;
   let transientMood = null;
+  let lastSpokenSayRaw = "";
   setInterval(() => {
     if (!win || win.isDestroyed()) return;
     const state = pollKinDb();
@@ -593,6 +594,27 @@ function createWindow() {
     const asleep = ["1", "true", "yes", "on"].includes(String(settings.sleep || "").toLowerCase());
     const voiceActive =
       voiceActiveLocal || ["1", "true", "yes", "on"].includes(String(settings.voice_active || "").toLowerCase());
+
+    // Persona voice replies: the plugin queues pending_say after each chat
+    // turn; speak it in the current persona's voice (lip-sync included) and
+    // clear the queue. Fresh timestamps only — a stale line from a restart
+    // never plays, and the mic/gpt-live path keeps its own audio.
+    try {
+      const rawSay = String(settings.pending_say || "").trim();
+      if (rawSay && rawSay !== lastSpokenSayRaw) {
+        lastSpokenSayRaw = rawSay;
+        const parsed = JSON.parse(rawSay);
+        const fresh = Number(parsed?.ts) > Date.now() / 1000 - 180;
+        const text = String(parsed?.text || "").trim();
+        if (fresh && text && !asleep && !voiceActive) {
+          const meta = AVATAR_VOICES[settings.avatar_id] || AVATAR_VOICES.kin;
+          speakCharacterLine(text, meta.instructions);
+        }
+        setKinSetting("pending_say", "");
+      } else if (!rawSay) {
+        lastSpokenSayRaw = "";
+      }
+    } catch {}
 
     let mood = "idle";
     let line = `Watching ${lastActiveDesktopWin.class || "Desktop"}`;
@@ -763,7 +785,7 @@ function transcribeUtteranceBuffer(pcmBuffer) {
       "res = transcribe_recording(sys.argv[1])",
       'print("KIN_STT_JSON:" + json.dumps(res))',
     ].join("; ");
-    execFile("python3", ["-c", pyCode, wavPath], { timeout: 25000 }, (err, stdout) => {
+    execFile(kinPython(), ["-c", pyCode, wavPath], { timeout: 25000 }, (err, stdout) => {
       const out = String(stdout || "");
       const m = out.match(/KIN_STT_JSON:(\{.*\})/);
       let parsed = null;
@@ -889,40 +911,88 @@ const AVATAR_VOICES = {
   moss: { voice: "onyx", role: "Chill Navigator", greet: "Moss here. No rush. We'll get there.", instructions: "Laid-back sloth: slow, mellow, unbothered, a little amused." },
 };
 
+// Resolve a python that can import Hermes deps (ruamel etc.): the agent
+// venv first, then KIN_PYTHON, then bare python3. A bare system python3
+// often lacks Hermes's deps and silently kills STT.
+const fsMod = require("fs");
+function kinPython() {
+  if (process.env.KIN_PYTHON && fsMod.existsSync(process.env.KIN_PYTHON)) return process.env.KIN_PYTHON;
+  const venv = require("path").join(process.env.HOME || "", ".hermes", "hermes-agent", "venv", "bin", "python3");
+  if (fsMod.existsSync(venv)) return venv;
+  return "python3";
+}
+
+function splitForSpeech(text, target = 140, hardMax = 220) {
+  const str = String(text || "").trim();
+  if (!str) return [];
+  const parts = str.match(/[^.!?…]+[.!?…]+["')\]]*\s*|[^.!?…]+$/g) || [str];
+  const chunks = [];
+  let buf = "";
+  for (const p of parts) {
+    if (buf && (buf + p).length > hardMax) {
+      chunks.push(buf.trim());
+      buf = "";
+    }
+    buf += p;
+    if (buf.length >= target) {
+      chunks.push(buf.trim());
+      buf = "";
+    }
+  }
+  if (buf.trim()) chunks.push(buf.trim());
+  return chunks.length ? chunks : [str];
+}
+
 // Spoken lines go through the Kin plugin, which calls Hermes's own
 // text_to_speech tool: Hermes picks the provider and holds its key, and the
 // overlay never reads a credential. The request rides the plugin's settings
 // table; the plugin relays it while the Kin pane is open in Hermes Desktop.
 // The voice is Hermes's own TTS voice, which a persona switch sets.
+//
+// Sentence-pipelined: the line is split into short chunks, the plugin makes
+// them in order and lists each finished one in `speech_ready`, and chunk 1
+// plays while later chunks are still being made.
 let speechSeq = 0;
-let lastSpeechId = "";
+let currentSpeech = null; // { id, n, played }
 
 function speakCharacterLine(text, instructions) {
+  const chunks = splitForSpeech(text);
+  if (!chunks.length) return;
   const id = `${Date.now()}-${++speechSeq}`;
-  lastSpeechId = id;
-  setKinSetting("pending_speech", JSON.stringify({ id, text, instructions: instructions || "" }));
+  currentSpeech = { id, n: chunks.length, played: -1 };
+  setKinSetting("pending_speech", JSON.stringify({ id, chunks, instructions: instructions || "" }));
 }
 
 function handleSpeechReady(raw) {
-  if (!raw) return;
-  setKinSetting("speech_ready", "");
+  if (!raw || !currentSpeech) return;
   let res = null;
   try {
     res = JSON.parse(raw);
   } catch {
     return;
   }
-  if (!res || res.id !== lastSpeechId) return;
-  if (res.path) playSpokenFile(String(res.path));
-  else if (res.error) logKinEvent("voice", "speak-failed", false, String(res.error).slice(0, 80));
+  if (!res || res.id !== currentSpeech.id) return;
+  const items = (Array.isArray(res.items) ? res.items : []).slice().sort((x, y) => x.i - y.i);
+  for (const it of items) {
+    if (it.i === currentSpeech.played + 1 && it.path) {
+      playSpokenFile(String(it.path), res.id, it.i, currentSpeech.n);
+      currentSpeech.played = it.i;
+    }
+  }
+  if (res.done) {
+    // A failed chunk ends the line early (no half-voiced replies beyond it).
+    if (res.error) logKinEvent("voice", "speak-failed", false, String(res.error).slice(0, 80));
+    setKinSetting("speech_ready", "");
+    currentSpeech = null;
+  }
 }
 
-function playSpokenFile(mp3) {
-  // Renderer-first: it plays the file through WebAudio and lip-syncs the
-  // 2D mouth off the live analyser level. If it never acks (no window yet,
-  // autoplay blocked), fall back to plain ffplay.
+function playSpokenFile(mp3, lineId, i, n) {
+  // Renderer-first: it queues and plays the chunks in order through
+  // WebAudio and lip-syncs off the live analyser level. If it never acks
+  // (no window yet, autoplay blocked), fall back to plain ffplay.
   if (win && !win.isDestroyed()) {
-    win.webContents.send("kin:speak", { mp3 });
+    win.webContents.send("kin:speak", { mp3, lineId, i, n });
     const t = setTimeout(() => ffplayMp3(mp3), 2500);
     speakAcks.set(mp3, t);
   } else {
