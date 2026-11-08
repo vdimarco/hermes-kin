@@ -751,6 +751,9 @@ async function selectPersona(next) {
 
 // Character picker popover (right-click the persona pill)
 const picker = document.getElementById("char-picker");
+// Re-parent to #root: with the drawer collapsed (display:none) the picker
+// would open inside a hidden container and the Avatar button looked dead.
+document.getElementById("root").appendChild(picker);
 PERSONAS.forEach((p) => {
   const b = document.createElement("button");
   b.className = "chip";
