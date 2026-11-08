@@ -34,6 +34,8 @@ export function mount2D(stageEl) {
   let blinking = false;
   let blinkTimer = 0;
   let mouthOpen = false;
+  let haveBlink = false;
+  let haveMouth = false;
 
   function applyPose() {
     if (!wrap) return;
@@ -48,7 +50,11 @@ export function mount2D(stageEl) {
       breathe.style.animation = dozing ? "none" : "";
       breathe.style.filter = dozing ? "saturate(0.65) brightness(0.85)" : "";
     }
-    if (imgBlink) imgBlink.style.opacity = dozing || blinking ? "1" : "0";
+    if (imgBlink) imgBlink.style.opacity = dozing || (haveBlink && blinking) ? "1" : "0";
+    if (blinking && !haveBlink && imgBase) {
+      imgBase.style.transform = "scaleY(0.985)";
+      setTimeout(() => { if (imgBase) imgBase.style.transform = ""; }, 110);
+    }
   }
 
   function scheduleBlink() {
@@ -99,9 +105,17 @@ export function mount2D(stageEl) {
       im.style.cssText = `position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,0.55));${extra}`;
       return im;
     };
-    imgBase = mkLayer("", "");
+    imgBase = mkLayer("", "transition:transform 70ms linear");
+    // Variant layers are optional: missing blink/mouth art falls back to
+    // motion-only animation — never a broken-image flash.
+    haveBlink = false;
+    haveMouth = false;
     imgBlink = mkLayer("blink", "opacity:0;transition:opacity 90ms linear");
     imgMouth = mkLayer("mouth", "opacity:0;transition:opacity 70ms linear");
+    imgBlink.onerror = () => { imgBlink.style.display = "none"; };
+    imgBlink.onload = () => { haveBlink = true; };
+    imgMouth.onerror = () => { imgMouth.style.display = "none"; };
+    imgMouth.onload = () => { haveMouth = true; };
     breathe.appendChild(imgBase);
     breathe.appendChild(imgBlink);
     breathe.appendChild(imgMouth);
@@ -128,13 +142,19 @@ export function mount2D(stageEl) {
   function setSpeech(level, isTalking) {
     talking = Boolean(isTalking);
     speechLevel = Number(level) || 0;
-    if (imgMouth) {
+    if (imgMouth && haveMouth) {
       // Threshold with hysteresis so the mouth flaps with the audio level
       // instead of flickering on quiet syllables.
       const nextOpen = talking && (mouthOpen ? speechLevel > 0.06 : speechLevel > 0.12);
       if (nextOpen !== mouthOpen) {
         mouthOpen = nextOpen;
         imgMouth.style.opacity = mouthOpen ? "1" : "0";
+      }
+    } else if (imgBase) {
+      const nextOpen = talking && (mouthOpen ? speechLevel > 0.06 : speechLevel > 0.12);
+      if (nextOpen !== mouthOpen) {
+        mouthOpen = nextOpen;
+        imgBase.style.transform = mouthOpen ? "translateY(1.5px) scaleY(0.99)" : "";
       }
     }
     // Talk-bob: the whole character bounces gently with the live audio level
