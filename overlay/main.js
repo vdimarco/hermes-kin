@@ -1036,6 +1036,27 @@ ipcMain.on("kin:action", (e, payload) => {
     if (kind === "speak-fallback" && mp3) ffplayMp3(mp3);
     return;
   }
+  if (kind === "set-tts-provider") {
+    // Voice engine choice (Kokoro / ElevenLabs / OpenAI). In the shipped
+    // relay architecture the plugin synthesizes via Hermes's own TTS, so
+    // this records the preference for the plugin; the toast confirms.
+    const provider = ["kokoro", "elevenlabs", "openai"].includes(String(payload?.provider)) ? String(payload.provider) : "kokoro";
+    setKinSetting("tts_provider", provider);
+    if (win && !win.isDestroyed()) {
+      const lbl = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" }[provider];
+      win.webContents.send("kin:toast", `Voice engine: ${lbl}`);
+    }
+    return;
+  }
+  if (kind === "gpt-live") {
+    // Full-duplex conversation mode: the pane switches Hermes's
+    // voice_chat_mode to gpt-live via the pending_voice_cmd relay.
+    setKinSetting("pending_voice_cmd", "gpt-live");
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("kin:toast", "GPT Live voice mode requested");
+    }
+    return;
+  }
   if (kind === "focus-hermes") {
     if (payload?.nav) setKinSetting("pending_nav", payload.nav);
     focusHermesWindow();

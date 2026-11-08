@@ -592,6 +592,7 @@
 
     <div id="bar-main" title="Click status to open Hermes">
       <button id="persona-btn" type="button" title="Avatar — click to choose your persona">Avatar ▾</button>
+      <button id="voice-provider-btn" type="button" title="Voice engine — click to switch (Kokoro is local and free; ElevenLabs needs a key; OpenAI is the cloud default)">Kokoro</button>
       <span id="pill-text">Listening…</span>
     </div>
 
@@ -1083,6 +1084,24 @@ function micUI(active, _status, level = 0, bars = [0, 0, 0, 0], speaking = false
   }
 }
 
+// Voice engine pill: cycles Kokoro (local, default) -> ElevenLabs -> OpenAI.
+const voiceProviderBtn = document.getElementById("voice-provider-btn");
+const TTS_PROVIDERS = ["kokoro", "elevenlabs", "openai"];
+const PROVIDER_LABEL = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" };
+voiceProviderBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const cur = (lastState && TTS_PROVIDERS.includes(lastState.tts_provider)) ? lastState.tts_provider : "kokoro";
+  const next = TTS_PROVIDERS[(TTS_PROVIDERS.indexOf(cur) + 1) % TTS_PROVIDERS.length];
+  window.kinFloat?.act?.({ kind: "set-tts-provider", provider: next });
+  voiceProviderBtn.textContent = PROVIDER_LABEL[next] || "Kokoro";
+});
+// Right-click the mic for gpt-live conversation mode (Hermes full-duplex voice).
+micBtn.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  window.kinFloat?.act?.({ kind: "gpt-live" });
+});
+
 // Avatar pill: left-click opens the persona picker (right-click works too)
 personaBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -1245,6 +1264,11 @@ window.kinFloat?.onState?.((state) => {
   // Mic indicator must mirror the real mic state, not the hardcoded default:
   // mic-on only when kin's mic loop is actually running.
   micEnabled = Boolean(voiceActive);
+  if (lastState.ttsProvider) {
+    const lbl = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" }[lastState.ttsProvider];
+    const vpBtn = document.getElementById("voice-provider-btn");
+    if (vpBtn && lbl && vpBtn.textContent !== lbl) vpBtn.textContent = lbl;
+  }
   root.classList.toggle("mic-on", micEnabled);
   if (!micEnabled) root.classList.remove("mic-speaking");
   if (avatarId && avatarId !== loadedAvatarId) {
