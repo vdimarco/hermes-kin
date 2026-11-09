@@ -187,6 +187,14 @@
     opacity: 0.85;
   }
 
+  #status-line {
+    display: flex;
+    align-items: center;
+    padding: 5px 12px 6px;
+    cursor: pointer;
+    min-height: 24px;
+  }
+
   #pill-text {
     font-size: 11px;
     font-weight: 450;
@@ -599,10 +607,10 @@
       </svg>
     </button>
 
-    <div id="bar-main" title="Click status to open Hermes">
+    <div id="bar-main">
       <button id="persona-btn" type="button" title="Avatar — click to choose your persona">Avatar ▾</button>
       <button id="voice-provider-btn" type="button" title="Voice engine — click to switch (Kokoro is local and free; ElevenLabs needs a key; OpenAI is the cloud default)">TTS: Kokoro ▾</button>
-      <span id="pill-text">Listening…</span>
+      <button id="voice-provider-btn" type="button" title="Voice engine — click to switch (Kokoro is local and free; ElevenLabs needs a key; OpenAI is the cloud default)">TTS: Kokoro ▾</button>
     </div>
 
     <button id="drawer-toggle" type="button" title="Hide / Show drawer">
@@ -611,6 +619,9 @@
       </svg>
     </button>
   </div>
+
+  <!-- Status line: its own row under the bar, changing as things happen -->
+  <div id="status-line" title="Click to open Hermes"><span id="pill-text">Listening…</span></div>
 
   <!-- Minimal Collapsible Drawer -->
   <div id="drawer">
@@ -1099,6 +1110,12 @@ const TTS_PROVIDERS = ["kokoro", "elevenlabs", "openai"];
 const PROVIDER_LABEL = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" };
 const ttsPillText = (p) => `TTS: ${PROVIDER_LABEL[p] || "Kokoro"} ▾`;
 voiceProviderBtn.textContent = ttsPillText("kokoro");
+voiceProviderBtn.title = "TTS engine — click to switch, right-click to speak a test line";
+voiceProviderBtn.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  window.kinFloat?.act?.({ kind: "tts-test" });
+});
 voiceProviderBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   const cur = TTS_PROVIDERS.includes(lastState?.ttsProvider) ? lastState.ttsProvider : "kokoro";
@@ -1275,6 +1292,11 @@ window.kinFloat?.onState?.((state) => {
   // Mic indicator must mirror the real mic state, not the hardcoded default:
   // mic-on only when kin's mic loop is actually running.
   micEnabled = Boolean(voiceActive);
+  if (lastState.ttsProvider) {
+    const want = ttsPillText(lastState.ttsProvider);
+    const vpBtn = document.getElementById("voice-provider-btn");
+    if (vpBtn && vpBtn.textContent !== want) vpBtn.textContent = want;
+  }
   if (lastState.ttsProvider) {
     const want = ttsPillText(lastState.ttsProvider);
     const vpBtn = document.getElementById("voice-provider-btn");
