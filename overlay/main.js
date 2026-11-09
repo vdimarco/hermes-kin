@@ -71,6 +71,86 @@ function openStateDb() {
   }
 }
 
+// Voice catalog for the picker. Persona defaults below; user overrides live
+// in the voice_overrides setting as { avatarId: { provider: voiceId } }.
+const VOICE_CATALOG = {
+  kokoro: [
+    { id: "af_bella", label: "Bella · warm female" },
+    { id: "af_nicole", label: "Nicole · airy female" },
+    { id: "af_sarah", label: "Sarah · soft female" },
+    { id: "af_sky", label: "Sky · bright female" },
+    { id: "af_kore", label: "Kore · up-close female" },
+    { id: "bf_emma", label: "Emma · British female" },
+    { id: "bf_alice", label: "Alice · clear British female" },
+    { id: "am_adam", label: "Adam · deep male" },
+    { id: "am_michael", label: "Michael · gritty male" },
+    { id: "am_fenrir", label: "Fenrir · passionate male" },
+    { id: "am_puck", label: "Puck · lively male" },
+    { id: "bm_fable", label: "Fable · storyteller male" },
+    { id: "bm_george", label: "George · anchor male" },
+    { id: "bm_lewis", label: "Lewis · crisp British male" },
+  ],
+  elevenlabs: [
+    { id: "Rachel", label: "Rachel · calm female" },
+    { id: "Charlotte", label: "Charlotte · sultry female" },
+    { id: "Matilda", label: "Matilda · refined female" },
+    { id: "Alice", label: "Alice · soft female" },
+    { id: "Nicole", label: "Nicole · expressive female" },
+    { id: "Adam", label: "Adam · deep male" },
+    { id: "Antoni", label: "Antoni · well-rounded male" },
+    { id: "Daniel", label: "Daniel · mature male" },
+    { id: "Josh", label: "Josh · young male" },
+    { id: "George", label: "George · narrator male" },
+    { id: "Brian", label: "Brian · deep narrator male" },
+    { id: "Liam", label: "Liam · youthful male" },
+  ],
+  openai: [
+    { id: "alloy", label: "Alloy · neutral" },
+    { id: "ash", label: "Ash · warm male" },
+    { id: "ballad", label: "Ballad · expressive" },
+    { id: "coral", label: "Coral · lively female" },
+    { id: "echo", label: "Echo · steady male" },
+    { id: "fable", label: "Fable · storyteller" },
+    { id: "nova", label: "Nova · bright female" },
+    { id: "onyx", label: "Onyx · deep male" },
+    { id: "sage", label: "Sage · soft female" },
+    { id: "shimmer", label: "Shimmer · airy female" },
+    { id: "verse", label: "Verse · versatile" },
+  ],
+};
+const KOKORO_VOICES = {
+  kin: "af_bella", elena: "bf_emma", vance: "am_fenrir", kael: "am_michael",
+  sera: "af_kore", freya: "af_nicole",
+  zip: "am_puck", juno: "af_bella", sprout: "af_kore", ollie: "am_adam",
+  barley: "bm_fable", mochi: "af_sky", moss: "bm_george",
+};
+const ELEVEN_VOICES = {
+  kin: "Rachel", elena: "Charlotte", vance: "Adam", kael: "Antoni",
+  sera: "Alice", freya: "Matilda",
+  zip: "Ethan", juno: "Rachel", sprout: "Alice", ollie: "Josh",
+  barley: "Bill", mochi: "Charlotte", moss: "George",
+};
+function currentTtsProvider() {
+  const pr = pollKinDb()?.settings?.tts_provider || "";
+  return ["kokoro", "elevenlabs", "openai"].includes(pr) ? pr : "kokoro";
+}
+function getVoiceOverrides() {
+  try { return JSON.parse(pollKinDb()?.settings?.voice_overrides || "{}"); }
+  catch { return {}; }
+}
+function setVoiceOverride(avatarId, provider, voice) {
+  const ov = getVoiceOverrides();
+  ov[avatarId] = ov[avatarId] || {};
+  ov[avatarId][provider] = voice;
+  setKinSetting("voice_overrides", JSON.stringify(ov));
+}
+function resolvedVoiceId(avatarId, provider) {
+  const ov = getVoiceOverrides();
+  if (provider === "kokoro") return ov[avatarId]?.kokoro || KOKORO_VOICES[avatarId] || "af_bella";
+  if (provider === "elevenlabs") return ov[avatarId]?.elevenlabs || ELEVEN_VOICES[avatarId] || "Rachel";
+  return ov[avatarId]?.openai || (AVATAR_VOICES[avatarId] || AVATAR_VOICES.kin).voice;
+}
+
 function setKinSetting(key, value) {
   const conn = openKinDb();
   if (!conn) return false;
@@ -663,6 +743,12 @@ function createWindow() {
       streaming,
       voiceActive,
       avatarId: settings.avatar_id || "kin",
+      ttsProvider: currentTtsProvider(),
+      voiceLabel: (() => {
+        const vid = resolvedVoiceId(settings.avatar_id || "kin", currentTtsProvider());
+        const ent = (VOICE_CATALOG[currentTtsProvider()] || []).find((v) => v.id === vid);
+        return ent ? ent.label.split(" ·")[0] : vid;
+      })(),
       desktop: lastActiveDesktopWin,
       activeTasks: lists.active,
       recentTasks: lists.recent,
@@ -1034,6 +1120,53 @@ ipcMain.on("kin:action", (e, payload) => {
       speakAcks.delete(mp3);
     }
     if (kind === "speak-fallback" && mp3) ffplayMp3(mp3);
+    return;
+  }
+  if (kind === "tts-test") {
+    const meta = AVATAR_VOICES[pollKinDb()?.settings?.avatar_id] || AVATAR_VOICES.kin;
+    speakCharacterLine("Voice engine test. This is how I sound right now.", meta.instructions);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("kin:toast", `Test spoken via the Hermes voice relay (${currentTtsProvider()} selected)`);
+    }
+    return;
+  }
+  if (kind === "get-voices") {
+    const avatarId = pollKinDb()?.settings?.avatar_id || "kin";
+    const provider = currentTtsProvider();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("kin:voices", {
+        provider,
+        elevenKey: !!(process.env.KIN_ELEVENLABS_KEY || pollKinDb()?.settings?.elevenlabs_api_key),
+        voices: VOICE_CATALOG,
+        selected: getVoiceOverrides()[avatarId] || {},
+        defaults: {
+          kokoro: KOKORO_VOICES[avatarId] || "af_bella",
+          elevenlabs: ELEVEN_VOICES[avatarId] || "Rachel",
+          openai: (AVATAR_VOICES[avatarId] || AVATAR_VOICES.kin).voice,
+        },
+      });
+    }
+    return;
+  }
+  if (kind === "set-voice") {
+    const provider = ["kokoro", "elevenlabs", "openai"].includes(String(payload?.provider)) ? String(payload.provider) : currentTtsProvider();
+    const voice = String(payload?.voice || "").trim();
+    const avatarId = pollKinDb()?.settings?.avatar_id || "kin";
+    if (provider === "elevenlabs" && !(process.env.KIN_ELEVENLABS_KEY || pollKinDb()?.settings?.elevenlabs_api_key)) {
+      if (win && !win.isDestroyed()) win.webContents.send("kin:toast", "ElevenLabs needs an API key first — type: tts key <your key>");
+      return;
+    }
+    setKinSetting("tts_provider", provider);
+    if (voice) setVoiceOverride(avatarId, provider, voice);
+    const names = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" };
+    const label = (VOICE_CATALOG[provider] || []).find((v) => v.id === voice);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("kin:toast", voice ? `Voice set: ${label ? label.label.split(" ·")[0] : voice} (${names[provider]})` : `Voice engine: ${names[provider]}`);
+    }
+    if (voice) {
+      const meta = AVATAR_VOICES[avatarId] || AVATAR_VOICES.kin;
+      speakCharacterLine(`Hi, this is my new ${names[provider]} voice.`, meta.instructions);
+    }
     return;
   }
   if (kind === "set-tts-provider") {

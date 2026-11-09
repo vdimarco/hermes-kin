@@ -29,4 +29,8 @@ contextBridge.exposeInMainWorld("kinFloat", {
     ipcRenderer.on("kin:speak", (e, s) => cb(s));
     return () => ipcRenderer.removeAllListeners("kin:speak");
   },
+  onVoices: (cb) => {
+    ipcRenderer.on("kin:voices", (e, v) => cb(v));
+    return () => ipcRenderer.removeAllListeners("kin:voices");
+  },
 });

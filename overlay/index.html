@@ -187,6 +187,36 @@
     opacity: 0.85;
   }
 
+  #voice-picker {
+    position: absolute;
+    top: 40px;
+    left: 8px;
+    z-index: 400;
+    width: 272px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(10, 11, 14, 0.97);
+    border: 1px solid var(--border);
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  #voice-picker .vp-title { font-size: 11.5px; font-weight: 600; color: var(--text); margin: 0 2px 7px; }
+  #voice-picker .vp-engines { display: flex; gap: 4px; margin-bottom: 7px; }
+  #voice-picker .vp-engine {
+    flex: 1; font-size: 10.5px; color: var(--text-dim); background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 0; cursor: pointer;
+  }
+  #voice-picker .vp-engine.active { color: var(--text); border-color: rgba(16,185,129,0.55); background: rgba(16,185,129,0.10); }
+  #voice-picker .vp-note { font-size: 10px; color: var(--text-dim); margin: 0 2px 6px; }
+  #voice-picker .vp-list { max-height: 300px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  #voice-picker .vp-chip {
+    font-size: 10.5px; color: var(--text-dim); background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 6px; cursor: pointer;
+    text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  #voice-picker .vp-chip:hover { color: var(--text); border-color: var(--border-strong); }
+  #voice-picker .vp-chip.active { color: var(--text); border-color: rgba(16,185,129,0.55); background: rgba(16,185,129,0.10); }
+  #voice-picker .vp-hint { font-size: 9.5px; color: var(--text-dim); opacity: 0.7; margin: 7px 2px 0; }
+
   #status-line {
     position: relative;
     z-index: 10;
@@ -617,9 +647,8 @@
     </button>
 
     <div id="bar-main">
-      <button id="persona-btn" type="button" title="Avatar — click to choose your persona">Avatar ▾</button>
-      <button id="voice-provider-btn" type="button" title="Voice engine — click to switch (Kokoro is local and free; ElevenLabs needs a key; OpenAI is the cloud default)">TTS: Kokoro ▾</button>
-      <button id="voice-provider-btn" type="button" title="Voice engine — click to switch (Kokoro is local and free; ElevenLabs needs a key; OpenAI is the cloud default)">TTS: Kokoro ▾</button>
+      <button id="persona-btn" type="button" title="Avatar — click to choose your persona">Kin ▾</button>
+      <button id="voice-provider-btn" type="button" title="Voice — click to pick a voice for this avatar, right-click to test">Bella ▾</button>
     </div>
 
     <button id="drawer-toggle" type="button" title="Hide / Show drawer">
@@ -912,51 +941,6 @@ window.kinFloat?.onSpeak?.(({ mp3, lineId } = {}) => {
   speakQueue.push(mp3);
   drainSpeakQueue();
 });
-  const bail = () => window.kinFloat?.act?.({ kind: "speak-fallback", mp3 });
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const el = new Audio(mp3);
-    const srcNode = audioCtx.createMediaElementSource(el);
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 512;
-    srcNode.connect(analyser);
-    analyser.connect(audioCtx.destination);
-    const data = new Uint8Array(analyser.frequencyBinCount);
-    let raf = 0;
-    const loop = () => {
-      if (el.paused || el.ended) {
-        avatar2d.setSpeech(0, false);
-        speakingNow = false;
-        root.classList.remove("char-speaking");
-        return;
-      }
-      analyser.getByteFrequencyData(data);
-      let sum = 0;
-      for (let i = 0; i < 48; i++) sum += data[i];
-      const lvl = Math.min(1, (sum / 48) / 80);
-      avatar2d.setSpeech(lvl * 1.5, true);
-      raf = requestAnimationFrame(loop);
-    };
-    el.addEventListener("playing", () => {
-      ack();
-      speakingNow = true;
-      root.classList.add("char-speaking");
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(loop);
-    });
-    el.addEventListener("ended", () => {
-      avatar2d.setSpeech(0, false);
-      speakingNow = false;
-      root.classList.remove("char-speaking");
-    });
-    el.addEventListener("error", () => {
-      if (!speakingNow) bail();
-    });
-    el.play().catch(() => bail());
-  } catch {
-    bail();
-  }
-});
 
 micBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -1115,11 +1099,8 @@ function micUI(active, _status, level = 0, bars = [0, 0, 0, 0], speaking = false
 
 // Voice engine pill: cycles Kokoro (local, default) -> ElevenLabs -> OpenAI.
 const voiceProviderBtn = document.getElementById("voice-provider-btn");
-const TTS_PROVIDERS = ["kokoro", "elevenlabs", "openai"];
-const PROVIDER_LABEL = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" };
-const ttsPillText = (p) => `TTS: ${PROVIDER_LABEL[p] || "Kokoro"} ▾`;
-voiceProviderBtn.textContent = ttsPillText("kokoro");
-voiceProviderBtn.title = "TTS engine — click to switch, right-click to speak a test line";
+voiceProviderBtn.textContent = "Bella ▾";
+voiceProviderBtn.title = "Voice — click to pick a voice for this avatar, right-click to test";
 voiceProviderBtn.addEventListener("contextmenu", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -1127,10 +1108,55 @@ voiceProviderBtn.addEventListener("contextmenu", (e) => {
 });
 voiceProviderBtn.addEventListener("click", (e) => {
   e.stopPropagation();
-  const cur = TTS_PROVIDERS.includes(lastState?.ttsProvider) ? lastState.ttsProvider : "kokoro";
-  const next = TTS_PROVIDERS[(TTS_PROVIDERS.indexOf(cur) + 1) % TTS_PROVIDERS.length];
-  window.kinFloat?.act?.({ kind: "set-tts-provider", provider: next });
-  voiceProviderBtn.textContent = ttsPillText(next);
+  window.kinFloat?.act?.({ kind: "get-voices" });
+});
+
+// --- Voice picker: engines on top, that engine's voices below ---
+let voicePicker = null;
+function closeVoicePicker() {
+  if (voicePicker) { voicePicker.remove(); voicePicker = null; }
+}
+window.kinFloat?.onVoices?.((data) => {
+  closeVoicePicker();
+  const persona = (typeof PERSONAS !== "undefined" && PERSONAS.find((p) => p.id === (lastState?.avatarId || "kin"))) || { label: "Kin" };
+  voicePicker = document.createElement("div");
+  voicePicker.id = "voice-picker";
+  const engineRow = ["kokoro", "elevenlabs", "openai"].map((pr) => {
+    const nm = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" }[pr];
+    const cls = pr === data.provider ? "vp-engine active" : "vp-engine";
+    return `<button class="${cls}" data-engine="${pr}">${nm}</button>`;
+  }).join("");
+  const sel = data.selected[data.provider] || data.defaults[data.provider];
+  const keyNote = data.provider === "elevenlabs" && !data.elevenKey
+    ? `<div class="vp-note">No ElevenLabs key — type <b>tts key &lt;key&gt;</b> in the bar below</div>` : "";
+  const chips = (data.voices[data.provider] || []).map((v) => {
+    const cls = v.id === sel ? "vp-chip active" : "vp-chip";
+    return `<button class="${cls}" data-voice="${v.id}" data-engine="${data.provider}">${v.label}</button>`;
+  }).join("");
+  voicePicker.innerHTML = `
+    <div class="vp-title">Voice for ${persona.label || persona.name || "Kin"}</div>
+    <div class="vp-engines">${engineRow}</div>
+    ${keyNote}
+    <div class="vp-list">${chips}</div>
+    <div class="vp-hint">Right-click the Voice pill anytime to hear a test</div>`;
+  document.getElementById("root").appendChild(voicePicker);
+  voicePicker.querySelectorAll(".vp-engine").forEach((b) => b.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    window.kinFloat?.act?.({ kind: "set-tts-provider", provider: b.dataset.engine });
+    setTimeout(() => window.kinFloat?.act?.({ kind: "get-voices" }), 350);
+  }));
+  voicePicker.querySelectorAll(".vp-chip").forEach((b) => b.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    window.kinFloat?.act?.({ kind: "set-voice", provider: b.dataset.engine, voice: b.dataset.voice });
+    closeVoicePicker();
+  }));
+  const dismiss = (ev) => {
+    if (voicePicker && !voicePicker.contains(ev.target) && ev.target !== voiceProviderBtn) {
+      closeVoicePicker();
+      document.removeEventListener("click", dismiss, true);
+    }
+  };
+  document.addEventListener("click", dismiss, true);
 });
 // Right-click the mic for gpt-live conversation mode (Hermes full-duplex voice).
 micBtn.addEventListener("contextmenu", (e) => {
@@ -1310,19 +1336,18 @@ function maybeOnboard() {
 window.kinFloat?.onState?.((state) => {
   lastState = state || {};
   const { mood, line, streaming, avatarId, voiceActive } = lastState;
+  // Live selection labels on the pills: "<Avatar name> ▾" / "<Voice> ▾".
+  {
+    const sel = (typeof PERSONAS !== "undefined" && PERSONAS.find((p) => p.id === (avatarId || "kin")));
+    const selName = sel ? (sel.label || sel.name) : null;
+    if (selName && personaBtn.textContent !== `${selName} ▾`) personaBtn.textContent = `${selName} ▾`;
+    if (lastState.voiceLabel && voiceProviderBtn.textContent !== `${lastState.voiceLabel} ▾`) {
+      voiceProviderBtn.textContent = `${lastState.voiceLabel} ▾`;
+    }
+  }
   // Mic indicator must mirror the real mic state, not the hardcoded default:
   // mic-on only when kin's mic loop is actually running.
   micEnabled = Boolean(voiceActive);
-  if (lastState.ttsProvider) {
-    const want = ttsPillText(lastState.ttsProvider);
-    const vpBtn = document.getElementById("voice-provider-btn");
-    if (vpBtn && vpBtn.textContent !== want) vpBtn.textContent = want;
-  }
-  if (lastState.ttsProvider) {
-    const want = ttsPillText(lastState.ttsProvider);
-    const vpBtn = document.getElementById("voice-provider-btn");
-    if (vpBtn && vpBtn.textContent !== want) vpBtn.textContent = want;
-  }
   root.classList.toggle("mic-on", micEnabled);
   if (!micEnabled) root.classList.remove("mic-speaking");
   if (avatarId && avatarId !== loadedAvatarId) {
