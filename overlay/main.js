@@ -1048,6 +1048,42 @@ ipcMain.on("kin:action", (e, payload) => {
     }
     return;
   }
+  if (kind === "set-eleven-key") {
+    // Store and validate an ElevenLabs key entered via the HUD composer.
+    const key = String(payload?.key || "").trim();
+    if (key.length < 8) return;
+    setKinSetting("elevenlabs_api_key", key);
+    // Validate against the ElevenLabs user endpoint so the user gets the
+    // truth about setup (tier + quota), not a silent maybe.
+    const u = new URL("https://api.elevenlabs.io/v1/user");
+    const req = require("https").request(
+      { hostname: u.hostname, path: u.pathname, method: "GET", timeout: 10000,
+        headers: { "xi-api-key": key } },
+      (res) => {
+        let body = "";
+        res.on("data", (d) => (body += d));
+        res.on("end", () => {
+          let note = "ElevenLabs key saved.";
+          if (res.statusCode === 200) {
+            try {
+              const j = JSON.parse(body);
+              const tier = j.subscription?.tier || "unknown tier";
+              const left = j.subscription?.character_count ?? "?";
+              const limit = j.subscription?.character_limit ?? "?";
+              note = `ElevenLabs key valid (${tier}, ${left}/${limit} chars). Click the TTS pill to ElevenLabs, right-click to test.`;
+            } catch {}
+          } else {
+            note = `ElevenLabs key saved but the API rejected it (${res.statusCode}) — check the key.`;
+          }
+          if (win && !win.isDestroyed()) win.webContents.send("kin:toast", note);
+        });
+      }
+    );
+    req.on("timeout", () => { req.destroy(); if (win && !win.isDestroyed()) win.webContents.send("kin:toast", "ElevenLabs key saved (could not reach the API to verify)."); });
+    req.on("error", () => { if (win && !win.isDestroyed()) win.webContents.send("kin:toast", "ElevenLabs key saved (could not reach the API to verify)."); });
+    req.end();
+    return;
+  }
   if (kind === "gpt-live") {
     // Full-duplex conversation mode: the pane switches Hermes's
     // voice_chat_mode to gpt-live via the pending_voice_cmd relay.

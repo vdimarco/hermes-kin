@@ -648,7 +648,7 @@
     <div id="char-picker"></div>
 
     <form id="ask-row">
-      <input id="ask-input" type="text" placeholder="Ask anything…" autocomplete="off" />
+      <input id="ask-input" type="text" placeholder="Ask anything… (tts key <key> adds ElevenLabs)" autocomplete="off" />
       <button type="submit" id="ask-send" title="Send">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -1379,6 +1379,15 @@ askForm.addEventListener("submit", (e) => {
   const text = askInput.value.trim();
   if (!text) return;
   askInput.value = "";
+  // TTS key entry from the HUD: "tts key <api key>" stores an ElevenLabs key
+  // locally (never sent to Hermes as a prompt).
+  const keyMatch = text.match(/^tts\s+key\s+(\S{8,})$/i);
+  if (keyMatch) {
+    window.kinFloat?.act?.({ kind: "set-eleven-key", key: keyMatch[1] });
+    toastUntil = Date.now() + 2500;
+    pillText.textContent = "Saving ElevenLabs key…";
+    return;
+  }
   askHistory.push(text);
   if (askHistory.length > 20) askHistory.shift();
   localStorage.setItem("kin_ask_history", JSON.stringify(askHistory));
