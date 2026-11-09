@@ -5,6 +5,7 @@ const net = require("net");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
+const HERMES_HOME = process.env.HERMES_HOME || path.join(os.homedir(), ".hermes");
 
 function resolveHyprSocketPath() {
   try {
@@ -51,7 +52,7 @@ function openKinDb() {
   if (db) return db;
   try {
     const { DatabaseSync } = require("node:sqlite");
-    const dbPath = path.join(os.homedir(), ".hermes", "plugin-data", "kin", "data.db");
+    const dbPath = path.join(HERMES_HOME, "plugin-data", "kin", "data.db");
     db = new DatabaseSync(dbPath);
     return db;
   } catch {
@@ -63,7 +64,7 @@ function openStateDb() {
   if (stateDb) return stateDb;
   try {
     const { DatabaseSync } = require("node:sqlite");
-    const dbPath = path.join(os.homedir(), ".hermes", "state.db");
+    const dbPath = path.join(HERMES_HOME, "state.db");
     stateDb = new DatabaseSync(dbPath, { readOnly: true });
     return stateDb;
   } catch {
@@ -303,7 +304,7 @@ function readTasksAndRecent(kinEvents) {
   // Hermes session that started them and labeled in plain English (the
   // session's title, or the plain program name), with a real age.
   try {
-    const pFile = path.join(os.homedir(), ".hermes", "processes.json");
+    const pFile = path.join(HERMES_HOME, "processes.json");
     if (fs.existsSync(pFile)) {
       const list = JSON.parse(fs.readFileSync(pFile, "utf8"));
       if (Array.isArray(list)) {
@@ -450,7 +451,7 @@ function captureRegion(geom, outPath, cb) {
 }
 
 function scratchDir() {
-  const d = path.join(os.homedir(), ".hermes", "cache", "scratch");
+  const d = path.join(HERMES_HOME, "cache", "scratch");
   try { fs.mkdirSync(d, { recursive: true }); } catch {}
   return d;
 }
@@ -498,7 +499,7 @@ function scanTerminalText(cb) {
       } catch {}
     }
     try {
-      const outDir = path.join(os.homedir(), ".hermes", "cache", "terminal-output");
+      const outDir = path.join(HERMES_HOME, "cache", "terminal-output");
       if (fs.existsSync(outDir)) {
         const files = fs
           .readdirSync(outDir)
@@ -618,7 +619,6 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: false,
     },
   });
 
@@ -866,12 +866,12 @@ function transcribeUtteranceBuffer(pcmBuffer) {
     }
     const pyCode = [
       "import sys, json",
-      'import os; sys.path.insert(0, os.path.expanduser("~/.hermes/hermes-agent"))',
+      'sys.path.insert(0, sys.argv[2])',
       "from tools.voice_mode import transcribe_recording",
       "res = transcribe_recording(sys.argv[1])",
       'print("KIN_STT_JSON:" + json.dumps(res))',
     ].join("; ");
-    execFile(kinPython(), ["-c", pyCode, wavPath], { timeout: 25000 }, (err, stdout) => {
+    execFile(kinPython(), ["-c", pyCode, wavPath, path.join(HERMES_HOME, "hermes-agent")], { timeout: 25000 }, (err, stdout) => {
       const out = String(stdout || "");
       const m = out.match(/KIN_STT_JSON:(\{.*\})/);
       let parsed = null;
@@ -1003,7 +1003,7 @@ const AVATAR_VOICES = {
 const fsMod = require("fs");
 function kinPython() {
   if (process.env.KIN_PYTHON && fsMod.existsSync(process.env.KIN_PYTHON)) return process.env.KIN_PYTHON;
-  const venv = require("path").join(process.env.HOME || "", ".hermes", "hermes-agent", "venv", "bin", "python3");
+  const venv = path.join(HERMES_HOME, "hermes-agent", "venv", "bin", "python3");
   if (fsMod.existsSync(venv)) return venv;
   return "python3";
 }
@@ -1136,7 +1136,6 @@ ipcMain.on("kin:action", (e, payload) => {
     if (win && !win.isDestroyed()) {
       win.webContents.send("kin:voices", {
         provider,
-        elevenKey: !!(process.env.KIN_ELEVENLABS_KEY || pollKinDb()?.settings?.elevenlabs_api_key),
         voices: VOICE_CATALOG,
         selected: getVoiceOverrides()[avatarId] || {},
         defaults: {
@@ -1152,10 +1151,6 @@ ipcMain.on("kin:action", (e, payload) => {
     const provider = ["kokoro", "elevenlabs", "openai"].includes(String(payload?.provider)) ? String(payload.provider) : currentTtsProvider();
     const voice = String(payload?.voice || "").trim();
     const avatarId = pollKinDb()?.settings?.avatar_id || "kin";
-    if (provider === "elevenlabs" && !(process.env.KIN_ELEVENLABS_KEY || pollKinDb()?.settings?.elevenlabs_api_key)) {
-      if (win && !win.isDestroyed()) win.webContents.send("kin:toast", "ElevenLabs needs an API key first — type: tts key <your key>");
-      return;
-    }
     setKinSetting("tts_provider", provider);
     if (voice) setVoiceOverride(avatarId, provider, voice);
     const names = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" };
@@ -1179,42 +1174,6 @@ ipcMain.on("kin:action", (e, payload) => {
       const lbl = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" }[provider];
       win.webContents.send("kin:toast", `Voice engine: ${lbl}`);
     }
-    return;
-  }
-  if (kind === "set-eleven-key") {
-    // Store and validate an ElevenLabs key entered via the HUD composer.
-    const key = String(payload?.key || "").trim();
-    if (key.length < 8) return;
-    setKinSetting("elevenlabs_api_key", key);
-    // Validate against the ElevenLabs user endpoint so the user gets the
-    // truth about setup (tier + quota), not a silent maybe.
-    const u = new URL("https://api.elevenlabs.io/v1/user");
-    const req = require("https").request(
-      { hostname: u.hostname, path: u.pathname, method: "GET", timeout: 10000,
-        headers: { "xi-api-key": key } },
-      (res) => {
-        let body = "";
-        res.on("data", (d) => (body += d));
-        res.on("end", () => {
-          let note = "ElevenLabs key saved.";
-          if (res.statusCode === 200) {
-            try {
-              const j = JSON.parse(body);
-              const tier = j.subscription?.tier || "unknown tier";
-              const left = j.subscription?.character_count ?? "?";
-              const limit = j.subscription?.character_limit ?? "?";
-              note = `ElevenLabs key valid (${tier}, ${left}/${limit} chars). Click the TTS pill to ElevenLabs, right-click to test.`;
-            } catch {}
-          } else {
-            note = `ElevenLabs key saved but the API rejected it (${res.statusCode}) — check the key.`;
-          }
-          if (win && !win.isDestroyed()) win.webContents.send("kin:toast", note);
-        });
-      }
-    );
-    req.on("timeout", () => { req.destroy(); if (win && !win.isDestroyed()) win.webContents.send("kin:toast", "ElevenLabs key saved (could not reach the API to verify)."); });
-    req.on("error", () => { if (win && !win.isDestroyed()) win.webContents.send("kin:toast", "ElevenLabs key saved (could not reach the API to verify)."); });
-    req.end();
     return;
   }
   if (kind === "gpt-live") {

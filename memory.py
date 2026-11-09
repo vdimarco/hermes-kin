@@ -39,6 +39,8 @@ class Memory:
         self._lock = threading.Lock()
         self._conn = self._open(path)
         self._conn.executescript(_SCHEMA)
+        # Remove the unused credential left by older overlays.
+        self._conn.execute("DELETE FROM settings WHERE key = 'elevenlabs_api_key'")
         self._conn.commit()
 
     def _open(self, path):
@@ -128,12 +130,14 @@ class Memory:
 
     def get_settings(self):
         with self._lock:
-            rows = self._conn.execute("SELECT key, value FROM settings").fetchall()
+            rows = self._conn.execute("SELECT key, value FROM settings WHERE key != 'elevenlabs_api_key'").fetchall()
         return {row["key"]: row["value"] for row in rows}
 
     def update_settings(self, values):
         with self._lock:
             for key, value in values.items():
+                if key == "elevenlabs_api_key":
+                    continue
                 self._conn.execute(
                     "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                     (str(key), "" if value is None else str(value)),

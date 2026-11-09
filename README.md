@@ -55,7 +55,7 @@ overlay (Electron)                Hermes plugin                     Hermes
 
 The overlay writes to the plugin's own SQLite settings table; the gateway dashboard route `GET /outbox` reads-and-clears each key atomically; the Desktop pane acts through the plugin SDK. No gateway patching, no socket sniffing, no second agent.
 
-Spoken lines ride the same table: the overlay writes `pending_speech`, `GET /outbox` hands it to Hermes's own `text_to_speech` tool, and the overlay plays the file the plugin stores in `speech_ready`. The overlay never holds a provider key.
+Spoken lines ride the same table: the overlay writes `pending_speech`, `GET /outbox` hands it to Hermes's own `text_to_speech` tool, and the overlay plays the file the plugin stores in `speech_ready`. The overlay never holds a provider key. Configure TTS credentials in Hermes settings; the retired `tts key` command is rejected locally. Older Kin ElevenLabs key rows are deleted when the plugin opens its database.
 
 ## Privacy and disclosures
 
@@ -118,9 +118,23 @@ Optional, for fully offline voice: install whisper.cpp with a ggml model at `~/.
 
 `/kin wrapup` stores a short handoff note. The next session's first turn can include it, unless Kin is muted or asleep.
 
+The overlay resolves its database, process list, and scratch paths from `HERMES_HOME`, falling back to `~/.hermes`. Launch it with the same `HERMES_HOME` as the plugin for profile installs.
+
 ## Develop
 
-`desktop/plugin.js` is the built bundle of the pane (esbuild + Three.js, with the bust inlined as a fallback). The overlay is plain Electron: `overlay/main.js` (main process) and `overlay/index.html` (renderer + UI). `kin-avatar.js` and `kin-2d.js` are the avatar engines — treat them as assets.
+`desktop/plugin.js` is the built bundle of the pane (esbuild + Three.js, with the bust inlined as a fallback). The overlay is plain Electron: `overlay/main.js` (main process) and `overlay/index.html` (UI) and `overlay/renderer.js` (renderer). `kin-avatar.js` and `kin-2d.js` are the avatar engines — treat them as assets.
+
+Regression checks (Python needs Hermes's FastAPI dependency; Electron uses the overlay install):
+
+```sh
+python -m unittest discover -s tests -v
+node tests/overlay-profile.cjs
+./overlay/node_modules/.bin/electron tests/overlay-security.cjs
+```
+
+On headless Linux, prefix the Electron command with `xvfb-run -a`.
+The overlay CSP permits the bundled meshopt decoder via `wasm-unsafe-eval`;
+JavaScript eval, inline scripts, and inline event handlers remain blocked.
 
 ## Layout
 
