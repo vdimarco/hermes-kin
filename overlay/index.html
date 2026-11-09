@@ -630,7 +630,7 @@
   </div>
 
   <!-- Status line: its own row under the bar, changing as things happen -->
-  <div id="status-line" title="Click to open Hermes"><span id="pill-text">Listening…</span></div>
+  <div id="status-line" title="Click to show your tasks"><span id="pill-text">Listening…</span></div>
 
   <!-- Minimal Collapsible Drawer -->
   <div id="drawer">
@@ -1150,10 +1150,22 @@ personaBtn.addEventListener("click", (e) => {
 if (localStorage.getItem("kin_hud_collapsed") === "1") {
   root.classList.add("collapsed");
 }
+function setDrawerOpen(open) {
+  root.classList.toggle("collapsed", !open);
+  localStorage.setItem("kin_hud_collapsed", open ? "0" : "1");
+}
+
 drawerToggle.addEventListener("click", (e) => {
   e.stopPropagation();
   const collapsed = root.classList.toggle("collapsed");
   localStorage.setItem("kin_hud_collapsed", collapsed ? "1" : "0");
+});
+
+// Clicking the status line opens the task list beneath it.
+const statusLine = document.getElementById("status-line");
+statusLine.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (root.classList.contains("collapsed")) setDrawerOpen(true);
 });
 
 window.kinFloat?.onGaze?.(({ dx, dy }) => {
