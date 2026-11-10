@@ -250,6 +250,58 @@ function plainProgramName(cmd) {
   return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
+// Live "what it's doing right now": describe the newest tool call in a
+// session in plain English (terminal -> the command, patch -> the file,
+// web tools -> searching/reading), falling back to the newest assistant text.
+function latestActivityText(sdb, sessionId) {
+  try {
+    const rows = sdb
+      .prepare(
+        "SELECT role, tool_name, tool_calls, content FROM messages WHERE session_id = ? ORDER BY id DESC LIMIT 8"
+      )
+      .all(sessionId);
+    for (const r of rows) {
+      let name = r.tool_name || "";
+      let args = null;
+      if (r.tool_calls) {
+        try {
+          const j = JSON.parse(r.tool_calls);
+          if (Array.isArray(j) && j.length) {
+            const f = j[0].function || {};
+            if (f.name) name = f.name;
+            try { args = typeof f.arguments === "string" ? JSON.parse(f.arguments) : f.arguments; } catch { args = null; }
+          }
+        } catch {}
+      }
+      if (name === "terminal" && args && args.command) {
+        const cmd = String(args.command).split("\n").map((l) => l.trim()).filter(Boolean).pop() || "";
+        const short = cmd.replace(/^(export\s+\S+\s+)?(cd\s+\S+\s*&&\s*)?/, "").slice(0, 46);
+        return short ? `Running: ${short}` : "Running a shell command";
+      }
+      if (name === "patch" && args && (args.path || args.old_string)) {
+        const base = String(args.path || "").split("/").pop() || "file";
+        return `Editing ${base}`;
+      }
+      if (name === "write_file" && args && args.path) {
+        return `Writing ${String(args.path).split("/").pop()}`;
+      }
+      if (name === "read_file") return args && args.path ? `Reading ${String(args.path).split("/").pop()}` : "Reading a file";
+      if (name === "web_search") return args && args.query ? `Searching the web: ${String(args.query).slice(0, 40)}` : "Searching the web";
+      if (name === "web_extract") return "Reading a web page";
+      if (name === "vision_analyze") return "Looking at an image";
+      if (name === "image_generate") return "Generating an image";
+      if (name === "browser_exec") return "Driving the browser";
+      if (name === "execute_code") return "Running analysis code";
+      if (name) return `Using ${name.replace(/_/g, " ")}`;
+      if (r.role === "assistant" && r.content) {
+        const snippet = String(r.content).replace(/\s+/g, " ").trim().slice(0, 60);
+        return snippet ? `\u201c${snippet}\u2026\u201d` : "";
+      }
+    }
+  } catch {}
+  return "";
+}
+
 function readTasksAndRecent(kinEvents) {
   const nowSec = Date.now() / 1000;
   const active = [];
@@ -276,13 +328,17 @@ function readTasksAndRecent(kinEvents) {
         const isLeased = leasedIds.has(s.id);
         const ageSec = Math.max(0, nowSec - Number(s.last_activity_at || 0));
         const cleanTitle = String(s.title || s.id).replace(/\s*·\s*[A-Z][a-z]{2}\s+\d{2}\s+\d{2}:\d{2}$/, "");
-        const sub = s.last_activity_description || (s.tool_call_count ? `${s.tool_call_count} tools run` : "Session");
+        const live = latestActivityText(sdb, s.id);
         if (isLeased) {
           active.push({
             id: s.id,
             nav: `/${s.id}`,
             label: cleanTitle,
-            sub: sub ? `Agent working — ${sub}` : "Agent turn running in this session",
+            sub: live
+              ? `${live} · ${s.tool_call_count || 0} tools so far`
+              : s.tool_call_count
+              ? `Agent working · ${s.tool_call_count} tools so far`
+              : "Agent turn running in this session",
             status: "running",
             ageSec,
           });
@@ -291,7 +347,7 @@ function readTasksAndRecent(kinEvents) {
             id: s.id,
             nav: `/${s.id}`,
             label: cleanTitle,
-            sub: sub || (s.ended_at ? "Session finished" : "Waiting for your next message"),
+            sub: live || (s.ended_at ? "Session finished" : "Waiting for your next message"),
             status: s.ended_at ? "done" : "ready",
             ageSec,
           });
@@ -348,7 +404,7 @@ function readTasksAndRecent(kinEvents) {
             id: key,
             nav: key && key !== "bg" ? `/${key}` : "",
             label: String(label).slice(0, 48),
-            sub: `Running in background · ${pidText}`,
+            sub: `Running ${plainProgramName(entries[0].command)} in the background · ${pidText}`,
             status: "running",
             ageSec,
           });
@@ -733,7 +789,11 @@ function createWindow() {
         streaming = settings.mood === "attentive";
       } else if (lists.active.length > 0) {
         mood = "watching";
-        line = `${lists.active[0].label.slice(0, 34)}`;
+        const a0 = lists.active[0];
+        const act0 = String(a0.sub || "").replace(/ · \d+ tools so far$/, "");
+        line = act0 && act0 !== "Agent turn running in this session"
+          ? act0.slice(0, 40)
+          : a0.label.slice(0, 34);
       }
     }
 
