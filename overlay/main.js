@@ -404,6 +404,8 @@ function readTasksAndRecent(kinEvents) {
             id: key,
             nav: key && key !== "bg" ? `/${key}` : "",
             label: String(label).slice(0, 48),
+            program: plainProgramName(entries[0].command),
+            pid: Number(oldest.pid) || Number(entries[0].pid) || 0,
             sub: `Running ${plainProgramName(entries[0].command)} in the background · ${pidText}`,
             status: "running",
             ageSec,
@@ -587,6 +589,69 @@ function scanDesktopWindow(cb) {
 // or null. Linux uses the Hyprland socket; macOS uses System Events; Windows
 // uses a small PowerShell Add-Type probe. All are optional — Snap falls back
 // to the last known window.
+// Focus the window a process lives in: click-through for non-Hermes tasks
+// (Claude, Codex, anything spawned in a terminal). Linux walks /proc to the
+// window-owning ancestor and matches by title as a fallback; macOS/Windows
+// match by process name or window title.
+function focusProcessWindow(program, pid, done) {
+  const name = String(program || "").toLowerCase();
+  const note = (msg) => { if (win && !win.isDestroyed()) win.webContents.send("kin:toast", msg); };
+  const miss = () => { note(`No open window found for ${program || "that task"}`); if (done) done(false); };
+  if (process.platform === "linux") {
+    execFile("hyprctl", ["clients", "-j"], { timeout: 2500 }, (err, out) => {
+      if (err) return miss();
+      let clients = [];
+      try { clients = JSON.parse(out); } catch { return miss(); }
+      const ancestry = new Set([pid]);
+      let cur = pid;
+      for (let i = 0; i < 12 && cur; i++) {
+        try {
+          const stat = fs.readFileSync(`/proc/${cur}/stat`, "utf8");
+          const m = stat.match(/\d+ \S+ [^ ]+ (\d+)/);
+          cur = m ? Number(m[1]) : 0;
+          if (!cur || cur === 1) break;
+          ancestry.add(cur);
+        } catch { break; }
+      }
+      let target = clients.find((c) => ancestry.has(Number(c.pid)));
+      if (!target && name) {
+        target = clients.find(
+          (c) =>
+            String(c.class || "").toLowerCase().includes(name) ||
+            String(c.title || "").toLowerCase().includes(name)
+        );
+      }
+      if (target) {
+        const cls = String(target.class || "").replace(/["\\]/g, "");
+        execFile("hyprctl", ["dispatch", `hl.dsp.focus({ window = "class:${cls}" })`], { timeout: 2500 }, () => {});
+        if (done) done(true);
+      } else {
+        miss();
+      }
+    });
+    return;
+  }
+  if (process.platform === "darwin") {
+    const script = name
+      ? `tell application "System Events" to set frontmost of first process whose name contains "${name}" to true`
+      : `tell application "System Events" to set frontmost of first application process whose unix id is ${pid} to true`;
+    execFile("osascript", ["-e", script], { timeout: 3000 }, (err) => {
+      if (err) miss(); else if (done) done(true);
+    });
+    return;
+  }
+  if (process.platform === "win32") {
+    const ps = pid
+      ? `(New-Object -ComObject WScript.Shell).AppActivate(${pid})`
+      : `(New-Object -ComObject WScript.Shell).AppActivate('${name}')`;
+    execFile("powershell", ["-NoProfile", "-Command", ps], { timeout: 3000 }, (err, out) => {
+      if (err || String(out).trim() === "False") miss(); else if (done) done(true);
+    });
+    return;
+  }
+  miss();
+}
+
 function getActiveWindow(cb) {
   if (process.platform === "linux" && HYPR_SOCK) {
     hyprSocketCmd("j/activewindow", (stdout) => {
@@ -1234,6 +1299,19 @@ ipcMain.on("kin:action", (e, payload) => {
       const lbl = { kokoro: "Kokoro", elevenlabs: "ElevenLabs", openai: "OpenAI" }[provider];
       win.webContents.send("kin:toast", `Voice engine: ${lbl}`);
     }
+    return;
+  }
+  if (kind === "focus-process") {
+    // Clicking a non-Hermes task (e.g. a Claude task) focuses the window
+    // that process lives in, instead of opening Hermes. If no window exists,
+    // fall back to the Hermes session that started it.
+    const program = String(payload?.program || "").trim();
+    const pid = Number(payload?.pid) || 0;
+    focusProcessWindow(program, pid, (found) => {
+      if (found) return;
+      if (payload?.nav) setKinSetting("pending_nav", String(payload.nav));
+      focusHermesWindow();
+    });
     return;
   }
   if (kind === "gpt-live") {

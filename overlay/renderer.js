@@ -537,7 +537,7 @@ function rowHtml(it) {
   const label = String(it.label || "").trim();
   const desc = String(it.sub || "").trim();
   return `
-    <div class="row" data-nav="${escapeHtml(it.nav || "")}" title="${escapeHtml(desc || label)}">
+    <div class="row" data-nav="${escapeHtml(it.nav || "")}" data-program="${escapeHtml(it.program || "")}" data-pid="${it.pid || 0}" title="${escapeHtml(desc || label)}">
       <div class="row-left">
         <span class="dot ${escapeHtml(st)}"></span>
         <div class="row-text">
@@ -606,6 +606,12 @@ function renderTab() {
 
   taskList.querySelectorAll(".row").forEach((row) => {
     row.addEventListener("click", () => {
+      const program = row.getAttribute("data-program") || "";
+      if (program) {
+        // Non-Hermes task (Claude, Codex, ...): focus its window.
+        window.kinFloat?.act?.({ kind: "focus-process", program, pid: Number(row.getAttribute("data-pid")) || 0, nav: row.getAttribute("data-nav") || "" });
+        return;
+      }
       const nav = row.getAttribute("data-nav") || "";
       window.kinFloat?.act?.({ kind: "focus-hermes", nav });
     });
